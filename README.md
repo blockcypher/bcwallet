@@ -1,10 +1,12 @@
 Bmoney is still under development and not ready for production use. You could very well lose money. Use at your own risk.
 
 To install (alpha, for developers only):
-`$ git clone https://github.com/blockcypher/bmoney.git`
-`$ virtualenv --python=python2 venv`  # see python2 note below 
-`$ . venv/bin/activate`
-`$ pip install --editable .`
+```
+$ git clone https://github.com/blockcypher/bmoney.git`
+$ virtualenv --python=python2 venv`  # see python2 note below 
+$ . venv/bin/activate`
+$ pip install --editable .
+```
 
 pypi support to follow when bmoney is ready for primetime.
 
