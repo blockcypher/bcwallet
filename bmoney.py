@@ -2,12 +2,15 @@ import click
 #from clint.textui import click.echo, indent, prompt
 #from clint import arguments
 
+# bitmerchant
 from bitmerchant.wallet import Wallet
+from bitmerchant.wallet.keys import PrivateKey
 
 from blockcypher import (create_hd_wallet, get_wallet_details,
         create_unsigned_tx, get_input_addresses, make_tx_signatures,
         broadcast_signed_transaction)
-from blockcypher.utils import is_valid_address_for_coinsymbol
+from blockcypher.utils import is_valid_address_for_coinsymbol, satoshis_to_btc
+from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from utils import (guess_network_from_mkey, guess_cs_from_mkey,
         find_hexkeys_from_bip32masterkey, get_blockcypher_walletname_from_mpub)
@@ -38,17 +41,39 @@ def display_balance_info(wallet_obj, verbose=False):
     click.echo('Balance: %s' % wallet_details['final_balance'])
     click.echo('Transactions: %s (%s Unconfirmed)' % (wallet_details['n_tx'],
         wallet_details['unconfirmed_n_tx']))
-    click.echo('-' * 50)
 
     return
 
 
-def display_new_receiving_addresses(wallet_obj):
+def display_new_receiving_addresses(wallet_obj, verbose=False):
     pass
 
 
-def display_recent_txs(wallet_obj):
-    pass
+def display_recent_txs(wallet_obj, verbose=False):
+    mpub = wallet_obj.serialize_b58(private=False)
+    bc_wallet_name = get_blockcypher_walletname_from_mpub(mpub)
+
+    wallet_details = get_wallet_details(
+            wallet_name=bc_wallet_name,
+            api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+            coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
+            )
+
+    # TODO: pagination for lots of transactions
+    if not wallet_details.get('txrefs'):
+        click.echo('No Transactions')
+
+    for tx in wallet_details.get('txrefs', []):
+        click.echo('Transaction %s: %s satoshis (%s %s) %s' % (
+            tx.get('tx_hash'),
+            tx.get('value'),
+            satoshis_to_btc(tx.get('value', 0)),
+            COIN_SYMBOL_MAPPINGS[guess_cs_from_mkey(mpub)]['currency_abbrev'],
+            'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
+            ))
+
+    return wallet_home_chooser(wallet_obj=wallet_obj, verbose=verbose,
+        show_instructions=True)
 
 
 def send_funds(wallet_obj, verbose=False):
@@ -161,20 +186,62 @@ def send_funds(wallet_obj, verbose=False):
             show_instructions=True)
 
 
-def generate_offline_tx(wallet_obj):
+def generate_offline_tx(wallet_obj, verbose=False):
     pass
 
 
-def sweep_funds_from_privkey():
+def sweep_funds_from_privkey(wallet_obj, verbose=False):
+    pkey = click.prompt('What private key would you like to send from?',
+            type=str)
+    pkey_obj = PrivateKey.from_wif(pkey)
+    pkey_addr = pkey_obj.get_public_key().to_address()
+    pkey_hex = pkey_obj.get_key()  # used for raw signing
+
+    # FIXME
+    click.echo('To Implement')  # note sweep value == -1
+
+    if verbose:
+        click.echo('%s for %s' % (pkey_addr, pkey_hex))
+
+    # TODO: sign and broadcast tx
+
+    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True,
+            verbose=verbose)
+
+
+def dump_private_keys(wallet_obj, verbose=False):
+
     pass
 
 
-def dump_private_keys(wallet_obj):
-    pass
+def dump_active_addresses(wallet_obj, verbose=False):
+    click.echo('Displaying Public Addresses Only')
+    click.echo('For Private Keys, please open bmoney with your Master Private Key:')
+    click.echo('  $ bmoney --wallet=xpriv123...')
 
+    # BIP 32 Default Wallet
+    # https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#The_default_wallet_layout
+    m0_wallet = wallet_obj.get_child(0)
 
-def dump_active_addresses(wallet_obj):
-    pass
+    # TODO: add boolean for whether or not they have a balance (if online)
+    # TODO: ability to paginate more
+
+    click.echo('-'*50)
+    click.echo('Internal Chain Addresses:')
+    for x in range(10):
+        curr_wallet = m0_wallet.get_child(0).get_child(x)
+        path = 'm/0/0/%s' % x
+        click.echo('%s (%s)' % (curr_wallet.to_address(), path))
+
+    click.echo('-'*50)
+    click.echo('External Chain Addresses:')
+    for x in range(10):
+        curr_wallet = m0_wallet.get_child(1).get_child(x)
+        path = 'm/0/1/%s' % x
+        click.echo('%s (%s)' % (curr_wallet.to_address(), path))
+
+    return wallet_home_chooser(wallet_obj=wallet_obj, verbose=verbose,
+        show_instructions=True)
 
 
 def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
@@ -182,6 +249,7 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
     Home menu selector for what to do
     '''
     if show_instructions:
+        click.echo('-'*75)
         click.echo('Here are your options:')
         click.echo(' 1: Get new receiving addresses')
         click.echo(' 2: Show recent transactions')
@@ -200,21 +268,23 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
         choice = click.prompt('Invalid entry. Please choose a number 0-5', type=int)
 
     if choice == 1:
-        return display_new_receiving_addresses(wallet_obj=wallet_obj)
+        return display_new_receiving_addresses(wallet_obj=wallet_obj,
+                verbose=verbose)
     elif choice == 2:
-        return display_recent_txs(wallet_obj=wallet_obj)
+        return display_recent_txs(wallet_obj=wallet_obj, verbose=verbose)
     elif choice == 3:
         if wallet_obj.private_key:
             return send_funds(wallet_obj=wallet_obj, verbose=verbose)
         else:
-            return generate_offline_tx(wallet_obj=wallet_obj)
+            return generate_offline_tx(wallet_obj=wallet_obj, verbose=verbose)
     elif choice == 4:
-        return sweep_funds_from_privkey()
+        return sweep_funds_from_privkey(sweep_funds_from_privkey,
+                verbose=verbose)
     elif choice == 0:
         if wallet_obj.private_key:
-            return dump_private_keys(wallet_obj=wallet_obj)
+            return dump_private_keys(wallet_obj=wallet_obj, verbose=verbose)
         else:
-            return dump_active_addresses(wallet_obj)
+            return dump_active_addresses(wallet_obj, verbose=verbose)
     else:
         return wallet_home_chooser(wallet_obj=wallet_obj, verbose=verbose,
                 show_instructions=True)
