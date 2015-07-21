@@ -221,7 +221,7 @@ def dump_active_addresses(wallet_obj, verbose=False):
 
     # BIP 32 Default Wallet
     # https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#The_default_wallet_layout
-    m0_wallet = wallet_obj.get_child(0)
+    m0h_wallet = wallet_obj.get_child(0, is_prime=True)
 
     # TODO: add boolean for whether or not they have a balance (if online)
     # TODO: ability to paginate more
@@ -229,14 +229,14 @@ def dump_active_addresses(wallet_obj, verbose=False):
     click.echo('-'*50)
     click.echo('Internal Chain Addresses:')
     for x in range(10):
-        curr_wallet = m0_wallet.get_child(0).get_child(x)
+        curr_wallet = m0h_wallet.get_child(0).get_child(x)
         path = 'm/0/0/%s' % x
         click.echo('%s (%s)' % (curr_wallet.to_address(), path))
 
     click.echo('-'*50)
     click.echo('External Chain Addresses:')
     for x in range(10):
-        curr_wallet = m0_wallet.get_child(1).get_child(x)
+        curr_wallet = m0h_wallet.get_child(1).get_child(x)
         path = 'm/0/1/%s' % x
         click.echo('%s (%s)' % (curr_wallet.to_address(), path))
 
