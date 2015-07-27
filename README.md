@@ -7,6 +7,7 @@ $ cd bwallet
 $ virtualenv --python=python2 venv  # see python2 note below 
 $ . venv/bin/activate
 $ pip install --editable .
+$ bwallet
 ```
 
 pypi support to follow when bwallet is ready for primetime.
