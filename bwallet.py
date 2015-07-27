@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import click
 
 # bitmerchant
@@ -32,6 +34,7 @@ def display_balance_info(wallet_obj, verbose=False):
             )
     if verbose:
         print('Wallet Name: %s' % bc_wallet_name)
+        print('API Key: %s' % BLOCKCYPHER_PUBLIC_API_KEY)
 
     wallet_details = get_wallet_details(
             wallet_name=bc_wallet_name,
@@ -42,8 +45,13 @@ def display_balance_info(wallet_obj, verbose=False):
     click.echo('Total Received: %s' % wallet_details['total_received'])
     click.echo('Total Sent: %s' % wallet_details['total_sent'])
     click.echo('Balance: %s' % wallet_details['final_balance'])
-    click.echo('Transactions: %s (%s Unconfirmed)' % (wallet_details['n_tx'],
-        wallet_details['unconfirmed_n_tx']))
+    if wallet_details['unconfirmed_n_tx']:
+        click.echo('Transactions: %s (%s Unconfirmed)' % (
+            wallet_details['final_n_tx'],
+            wallet_details['unconfirmed_n_tx'],
+            ))
+    else:
+        click.echo('Transactions: %s' % wallet_details['final_n_tx'])
 
     return
 
@@ -68,8 +76,7 @@ def get_used_addresses(wallet_obj, verbose=False):
     if verbose:
         print(wallet_details)
 
-    # confirm this is correct
-    return set(wallet_details.get('addresses', []))
+    return set(wallet_details['wallet']['addresses'])
 
 
 def get_unused_addresses_on_subchain(wallet_obj, subchain_index,
@@ -98,6 +105,8 @@ def get_unused_addresses_on_subchain(wallet_obj, subchain_index,
             break
 
         attempt_cnt += 1
+
+    return addresses_found
 
 
 def get_unused_receiving_addresses(wallet_obj, num_addrs_to_return=5,
@@ -137,7 +146,7 @@ def display_new_receiving_addresses(wallet_obj, verbose=False):
             )
 
     for unused_receiving_address in unused_receiving_addresses:
-        click.echo('  %s (path is m/0/%s)' % (
+        click.echo('  %s (path is %s)' % (
             unused_receiving_address['address'],
             unused_receiving_address['path'],
             ))
@@ -165,7 +174,9 @@ def display_recent_txs(wallet_obj, verbose=False):
     if not wallet_details.get('txrefs'):
         click.echo('No Transactions')
 
-    for tx in wallet_details.get('txrefs', []):
+    txs = wallet_details.get('unconfirmed_txrefs', []) \
+            + wallet_details.get('txrefs', [])
+    for tx in txs:
         click.echo('Transaction %s: %s satoshis (%s %s) %s' % (
             tx.get('tx_hash'),
             tx.get('value'),
@@ -211,33 +222,28 @@ def send_funds(wallet_obj, verbose=False):
     # TODO: confirm value entered
     # TODO: add ability to set preference
 
-    wallet_name = get_blockcypher_walletname_from_mpub(
-            mpub=mpub,
-            wallet_name=wallet_name,
-            )
     inputs = [{
             'wallet_name': wallet_name,
             'wallet_token': BLOCKCYPHER_PUBLIC_API_KEY,
-            },
-            ]
+            }, ]
     outputs = [{
             'value': dest_satoshis,
-            'addresses': [destination_address, ],
-            },
-            ]
-
-    if verbose:
-        print('Inputs:')
-        print(json.dumps(inputs, indent=2))
-        print('Outputs:')
-        print(json.dumps(outputs, indent=2))
-        print('coin symbol: %s' % coin_symbol)
+            'address': destination_address,
+            }, ]
 
     change_address = get_unused_change_addresses(
             wallet_obj=wallet_obj,
             num_addrs_to_return=1,
             verbose=verbose,
             )[0]['address']
+
+    if verbose:
+        print('Inputs:')
+        print(json.dumps(inputs, indent=2))
+        print('Outputs:')
+        print(json.dumps(outputs, indent=2))
+        print('Change Address: %s' % change_address)
+        print('coin symbol: %s' % coin_symbol)
 
     unsigned_tx = create_unsigned_tx(
         inputs=inputs,
@@ -279,7 +285,6 @@ def send_funds(wallet_obj, verbose=False):
     if verbose:
         print('TX Signatures: %s' % tx_signatures)
 
-    # FIXME: verify what is being signed is legit
     # FIXME: add final confirmation before broadcast
 
     broadcasted_tx = broadcast_signed_transaction(
@@ -319,7 +324,7 @@ def sweep_funds_from_privkey(wallet_obj, verbose=False):
     pkey = click.prompt('Enter a private key (in WIF format) to send from?',
             type=str)
     # TODO: error checking if invalid wif
-    pkey_obj = PrivateKey.from_wif(pkey)
+    pkey_obj = PrivateKey.from_wif(pkey, network=guess_network_from_mkey(mpub))
     pkey_addr = pkey_obj.get_public_key().to_address(compressed=True)
 
     if verbose:
@@ -337,10 +342,10 @@ def sweep_funds_from_privkey(wallet_obj, verbose=False):
             verbose=verbose,
             )[0]['address']
 
-    outputs = {
+    outputs = [{
             'address': dest_addr,
             'value': -1,  # sweep value
-            }
+            }, ]
 
     unsigned_tx = create_unsigned_tx(
         inputs=inputs,
@@ -410,8 +415,7 @@ def dump_private_keys(wallet_obj, verbose=False):
     # TODO: pagination
 
     click.echo('-'*50)
-    click.echo('  path,WIF,address')
-    for chain_int in (0, 2):
+    for chain_int in (0, 1):
         for current in range(0, 10):
             path = "m/%d/%d" % (chain_int, current)
             if current == 0:
@@ -419,6 +423,7 @@ def dump_private_keys(wallet_obj, verbose=False):
                     click.echo('External Chain Addresses:')
                 elif chain_int == 1:
                     click.echo('Internal Chain Addresses:')
+                click.echo('  path,WIF,address')
             child_wallet = wallet_obj.get_child_for_path(path)
             click.echo('  %s,%s,%s' % (
                 path,
@@ -434,8 +439,8 @@ def dump_active_addresses(wallet_obj, verbose=False):
     mpub = wallet_obj.serialize_b58(private=False)
 
     click.echo('Displaying Public Addresses Only')
-    click.echo('For Private Keys, please open bmoney with your Master Private Key:')
-    click.echo('  $ bmoney --wallet=xpriv123...')
+    click.echo('For Private Keys, please open bwallet with your Master Private Key:')
+    click.echo('  $ bwallet --wallet=xpriv123...')
 
     used_addresses = list(get_used_addresses(wallet_obj=wallet_obj,
             verbose=verbose))
@@ -475,11 +480,11 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
 
     if show_instructions:
         click.echo('-'*75)
-        click.echo('Here are your options:')
+        click.echo('What do you want to do?:')
         click.echo(' 1: Get new receiving addresses')
         click.echo(' 2: Show recent transactions')
         if wallet_obj.private_key:
-            click.echo(' 3: Send funds (generate transaction, sign & broadcast')
+            click.echo(' 3: Send funds (generate transaction, sign, & broadcast)')
         else:
             click.echo(' 3: Generate transaction for offline signing')
         click.echo(' 4: Sweep funds into bwallet from a private key you hold')
@@ -487,10 +492,7 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
             click.echo(' 0: Dump private keys (advanced users only)')
         else:
             click.echo(' 0: Dump active addresses (advanced users only)')
-        click.echo('')
-        choice = click.prompt('What do you want to do?', type=int)
-    else:
-        choice = click.prompt('Invalid entry. Please choose a number 0-5', type=int)
+    choice = click.prompt('฿', type=int)
 
     if choice == 1:
         return display_new_receiving_addresses(wallet_obj=wallet_obj,
@@ -503,8 +505,7 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
         else:
             return generate_offline_tx(wallet_obj=wallet_obj, verbose=verbose)
     elif choice == 4:
-        return sweep_funds_from_privkey(sweep_funds_from_privkey,
-                verbose=verbose)
+        return sweep_funds_from_privkey(wallet_obj=wallet_obj, verbose=verbose)
     elif choice == 0:
         if wallet_obj.private_key:
             return dump_private_keys(wallet_obj=wallet_obj, verbose=verbose)
@@ -512,7 +513,7 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
             return dump_active_addresses(wallet_obj, verbose=verbose)
     else:
         return wallet_home_chooser(wallet_obj=wallet_obj, verbose=verbose,
-                show_instructions=True)
+                show_instructions=False)
 
 
 def wallet_home(wallet_obj, verbose=False, show_welcome_msg=True):
@@ -527,7 +528,7 @@ def wallet_home(wallet_obj, verbose=False, show_welcome_msg=True):
         else:
             click.echo("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
             click.echo("If you like, you can always open your wallet in PUBLIC key mode like this:")
-            click.echo('  $ bmoney --wallet=%s' % mpub)
+            click.echo('  $ bwallet --wallet=%s' % mpub)
 
     wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
@@ -552,13 +553,13 @@ def wallet_home(wallet_obj, verbose=False, show_welcome_msg=True):
 
 
 def coin_symbol_chooser(verbose=False):
-    click.echo('bwallet currently supports:')
+    click.echo('Which currency do you want to create a wallet for?')
     for coin_symbol_choice in COIN_SYMBOL_LIST:
         click.echo('  %s: %s' % (
             coin_symbol_choice,
             COIN_SYMBOL_MAPPINGS[coin_symbol_choice]['display_name'],
             ))
-    coin_symbol = click.prompt('Which currency do you want to create a wallet for?').lower()
+    coin_symbol = click.prompt('฿').lower()
     if verbose:
         click.echo(coin_symbol)
     if coin_symbol in COIN_SYMBOL_LIST:
@@ -580,9 +581,8 @@ def cli(wallet, verbose):
 
     if verbose:
         click.echo('wallet %s' % wallet)
-        print('BlockCypher API Key: %s' % BLOCKCYPHER_PUBLIC_API_KEY)
 
-    click.echo("Welcome to bmoney!")
+    click.echo("Welcome to bwallet!")
 
     if wallet:
         network = guess_network_from_mkey(wallet)
@@ -606,18 +606,22 @@ def cli(wallet, verbose):
             click.echo("Invalid wallet entry: %s" % wallet)
 
     else:
-        click.echo("You've opened your wallet without specifying a master public or master private key.")
-        click.echo("Let's generate a new master private key (locally) for you to use.")
+        click.echo("You've opened your wallet without specifying a master public or master private key. Let's generate a new master private key (locally) for you to use.")
 
         coin_symbol = coin_symbol_chooser(verbose=verbose)
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
-        click.echo("Let's generate some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised.")
+        click.echo("Let's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised.")
         click.echo("Please bang on the keyboard for as long as you like.")
-        extra_entropy = click.prompt("There's no reason to record this value, it cannot be used to recover your keys")
+        click.echo("There's no reason to record this value, it cannot be used to recover your keys")
+        extra_entropy = click.prompt("฿")
 
         if verbose:
             click.echo(extra_entropy)
+            # worst-case assumption (attacker knows keyspace and length)
+            entropy_space = len(extra_entropy) ** len(set(extra_entropy))
+            bits_entropy = len(bin(entropy_space)) - 2
+            click.echo('bits of extra_entropy: %s' % bits_entropy)
 
         user_wallet_obj = Wallet.new_random_wallet(network=network,
                 user_entropy=extra_entropy)
@@ -625,13 +629,13 @@ def cli(wallet, verbose):
         mpub = user_wallet_obj.serialize_b58(private=False)
         click.echo('Your master PRIVATE key is: %s' % mpriv)
         click.echo('Your master PUBLIC key is: %s' % mpub)
-        click.echo('bmoney will now quit. Open your new wallet anytime like this:')
-        click.echo('    $ bmoney --wallet=%s' % mpriv)
+        click.echo('bwallet will now quit. Open your new wallet anytime like this:')
+        click.echo('    $ bwallet --wallet=%s' % mpriv)
 
 
 if __name__ == '__main__':
     '''
     For (rare) invocation like this:
-    python bmoney.py
+    python bwallet.py
     '''
     cli()

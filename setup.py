@@ -3,16 +3,16 @@
 from setuptools import setup
 
 setup(
-        name='bmoney',
+        name='bwallet',
         version='0.0.1',
-        py_modules=['bmoney'],
+        py_modules=['bwallet'],
         install_requires=[
             'click==4.1',
-            'blockcypher==1.0.4',
+            'blockcypher==1.0.8',
             'bitmerchant==0.1.5',
             ],
         entry_points='''
             [console_scripts]
-            bmoney=bmoney:cli
+            bwallet=bwallet:cli
         '''
         )
