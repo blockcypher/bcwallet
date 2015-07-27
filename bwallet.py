@@ -569,7 +569,7 @@ def coin_symbol_chooser(verbose=False):
         return coin_symbol_chooser()
 
 
-@click.command()
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--wallet', help='Master public or private key (starts with xprv... and xpub... for BTC)')
 @click.option('--verbose', is_flag=True, default=False)
 def cli(wallet, verbose):
