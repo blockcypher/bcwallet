@@ -9,13 +9,13 @@ from bitmerchant.wallet.keys import PrivateKey
 from blockcypher import (create_hd_wallet, get_wallet_details,
         create_unsigned_tx, get_input_addresses, make_tx_signatures,
         broadcast_signed_transaction)
-from blockcypher.utils import is_valid_address_for_coinsymbol, satoshis_to_btc
+from blockcypher.utils import (is_valid_address_for_coinsymbol,
+        satoshis_to_btc, get_blockcypher_walletname_from_mpub)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from utils import (guess_network_from_mkey, guess_cs_from_mkey,
         find_hexkeypair_from_bip32key_bc, find_paths_from_bip32key_bc,
-        get_blockcypher_walletname_from_mpub, get_tx_url,
-        COIN_SYMBOL_TO_BMERCHANT_NETWORK, COIN_SYMBOL_LIST)
+        get_tx_url, COIN_SYMBOL_TO_BMERCHANT_NETWORK, COIN_SYMBOL_LIST)
 
 
 # FIXME: use a public API key that can be stored in source code
@@ -25,12 +25,20 @@ with open('.env', 'r') as f:
 assert BLOCKCYPHER_PUBLIC_API_KEY
 
 
+def get_public_wallet_url(mpub):
+    # subchain indices set at 0 * 1
+    return 'https://live.blockcypher.com/%s/xpub/%s/0-1/' % (
+            guess_cs_from_mkey(mpub),
+            mpub,
+            )
+
+
 def display_balance_info(wallet_obj, verbose=False):
     mpub = wallet_obj.serialize_b58(private=False)
 
     bc_wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
-            subchain_indexes=[0, 1],
+            subchain_indices=[0, 1],
             )
     if verbose:
         print('Wallet Name: %s' % bc_wallet_name)
@@ -53,6 +61,8 @@ def display_balance_info(wallet_obj, verbose=False):
     else:
         click.echo('Transactions: %s' % wallet_details['final_n_tx'])
 
+    click.echo('For details, see: %s' % get_public_wallet_url(mpub))
+
     return
 
 
@@ -64,7 +74,7 @@ def get_used_addresses(wallet_obj, verbose=False):
 
     wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
-            subchain_indexes=[0, 1],
+            subchain_indices=[0, 1],
             )
 
     wallet_details = get_wallet_details(
@@ -76,7 +86,7 @@ def get_used_addresses(wallet_obj, verbose=False):
     if verbose:
         print(wallet_details)
 
-    return set(wallet_details['wallet']['addresses'])
+    return set(wallet_details['wallet'].get('addresses', []))
 
 
 def get_unused_addresses_on_subchain(wallet_obj, subchain_index,
@@ -135,7 +145,7 @@ def display_new_receiving_addresses(wallet_obj, verbose=False):
     mpub = wallet_obj.serialize_b58(private=False)
 
     click.echo('-' * 75)
-    click.echo('Next 5 Unused %s Recieving Addresses (for people to send you funds):' %
+    click.echo('Next 5 Unused %s Receiving Addresses (for people to send you funds):' %
             COIN_SYMBOL_MAPPINGS[guess_cs_from_mkey(mpub)]['currency_abbrev']
             )
 
@@ -161,7 +171,7 @@ def display_recent_txs(wallet_obj, verbose=False):
     mpub = wallet_obj.serialize_b58(private=False)
     wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
-            subchain_indexes=[0, 1],
+            subchain_indices=[0, 1],
             )
 
     wallet_details = get_wallet_details(
@@ -185,6 +195,8 @@ def display_recent_txs(wallet_obj, verbose=False):
             'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
             ))
 
+    click.echo('For details, see: %s' % get_public_wallet_url(mpub))
+
     return wallet_home_chooser(wallet_obj=wallet_obj, verbose=verbose,
         show_instructions=True)
 
@@ -200,7 +212,7 @@ def send_funds(wallet_obj, verbose=False):
 
     wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
-            subchain_indexes=[0, 1],
+            subchain_indices=[0, 1],
             )
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
@@ -492,7 +504,7 @@ def wallet_home_chooser(wallet_obj, verbose=False, show_instructions=True):
             click.echo(' 0: Dump private keys (advanced users only)')
         else:
             click.echo(' 0: Dump active addresses (advanced users only)')
-    choice = click.prompt('฿', type=int)
+    choice = click.prompt('฿', type=click.IntRange(0, 10))
 
     if choice == 1:
         return display_new_receiving_addresses(wallet_obj=wallet_obj,
@@ -532,7 +544,7 @@ def wallet_home(wallet_obj, verbose=False, show_welcome_msg=True):
 
     wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
-            subchain_indexes=[0, 1],
+            subchain_indices=[0, 1],
             )
 
     # Instruct blockcypher to track the wallet by pubkey
@@ -541,7 +553,7 @@ def wallet_home(wallet_obj, verbose=False, show_welcome_msg=True):
             xpubkey=mpub,
             api_key=BLOCKCYPHER_PUBLIC_API_KEY,
             coin_symbol=guess_cs_from_mkey(mpub),
-            subchain_indexes=[0, 1],  # for internal and change addresses
+            subchain_indices=[0, 1],  # for internal and change addresses
             )
 
     # Display balance info
@@ -554,19 +566,15 @@ def wallet_home(wallet_obj, verbose=False, show_welcome_msg=True):
 
 def coin_symbol_chooser(verbose=False):
     click.echo('Which currency do you want to create a wallet for?')
-    for coin_symbol_choice in COIN_SYMBOL_LIST:
+    for cnt, coin_symbol_choice in enumerate(COIN_SYMBOL_LIST):
         click.echo('  %s: %s' % (
-            coin_symbol_choice,
+            cnt+1,
             COIN_SYMBOL_MAPPINGS[coin_symbol_choice]['display_name'],
             ))
-    coin_symbol = click.prompt('฿').lower()
+    coin_symbol_int = click.prompt('฿', type=click.IntRange(1, len(COIN_SYMBOL_LIST)))
     if verbose:
-        click.echo(coin_symbol)
-    if coin_symbol in COIN_SYMBOL_LIST:
-        return coin_symbol
-    else:
-        click.echo('`%s` is not a valid entry' % coin_symbol)
-        return coin_symbol_chooser()
+        click.echo(coin_symbol_int)
+    return COIN_SYMBOL_LIST[coin_symbol_int+1]
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -611,10 +619,9 @@ def cli(wallet, verbose):
         coin_symbol = coin_symbol_chooser(verbose=verbose)
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
-        click.echo("Let's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised.")
-        click.echo("Please bang on the keyboard for as long as you like.")
-        click.echo("There's no reason to record this value, it cannot be used to recover your keys")
-        extra_entropy = click.prompt("฿")
+        click.echo("Let's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency.")
+        click.echo("Please bang on the keyboard for as long as you like and then hit enter. There's no reason to record this value, it cannot be used to recover your keys.")
+        extra_entropy = click.prompt("฿", hide_input=True)
 
         if verbose:
             click.echo(extra_entropy)

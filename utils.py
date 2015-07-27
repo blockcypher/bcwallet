@@ -3,8 +3,6 @@ from bitmerchant.network import (BitcoinMainNet, BitcoinTestNet,
 
 from bitmerchant.wallet import Wallet
 
-from hashlib import sha256
-
 from blockcypher.utils import is_valid_coin_symbol, is_valid_hash
 
 
@@ -23,7 +21,7 @@ FIRST4_MKEY_MAPPINGS = {
         'TPRV': [BitcoinTestNet, 'btc-testnet'],
         'TPUB': [BitcoinTestNet, 'btc-testnet'],
         'LTPV': [LitecoinMainNet, 'ltc'],
-        'LTUP': [LitecoinMainNet, 'ltc'],
+        'LTUB': [LitecoinMainNet, 'ltc'],
         'DGPV': [DogecoinMainNet, 'doge'],
         'DGPV': [DogecoinMainNet, 'doge'],
         # 'BPRV': [BlockCypherTestNet, 'bcy'],
@@ -226,17 +224,3 @@ def find_paths_from_bip32key_bc(pub_address_list, master_key,
                 )
         paths.append(path)
     return paths
-
-
-def get_blockcypher_walletname_from_mpub(mpub, subchain_indexes=[]):
-    '''
-    Blockcypher limits wallet names to 25 chars.
-
-    Hash the master pubkey (with subchain indexes) and take the first 25 chars.
-
-    Hackey determinstic method for naming.
-    '''
-    assert type(mpub) in (str, unicode), mpub
-    if subchain_indexes:
-        mpub += ','.join([str(x) for x in subchain_indexes])
-    return sha256(mpub).hexdigest()[:25]
