@@ -8,7 +8,7 @@ setup(
         py_modules=['bwallet'],
         install_requires=[
             'click==4.1',
-            'blockcypher==1.0.11',
+            'blockcypher==1.0.12',
             'bitmerchant==0.1.5',
             ],
         entry_points='''
