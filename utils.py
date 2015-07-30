@@ -212,6 +212,8 @@ def find_paths_from_bip32key_bc(pub_address_list, master_key,
         network=BitcoinMainNet, starting_pos=0, depth=100):
     '''
     Bulk method for find_path_from_bip32masterkey
+
+    # TODO: re-write this for massive speedup
     '''
     paths = []
     for pub_address in pub_address_list:
