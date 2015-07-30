@@ -217,6 +217,20 @@ def display_recent_txs(wallet_obj):
     return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
 
+def get_dest_address(coin_symbol, show_instructions=True):
+    currency_abrev = COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev']
+    if show_instructions:
+        click.echo('What %s address do you want to send to?' % currency_abrev)
+    destination_address = click.prompt('฿', type=str).strip()
+    if is_valid_address_for_coinsymbol(destination_address,
+            coin_symbol=coin_symbol):
+        return destination_address
+    else:
+        click.echo('Invalid %s address, try again' % currency_abrev)
+        return get_dest_address(coin_symbol=coin_symbol,
+                show_instructions=False)
+
+
 def send_funds(wallet_obj):
     mpub = wallet_obj.serialize_b58(private=False)
     mpriv = wallet_obj.serialize_b58(private=True)
@@ -234,13 +248,9 @@ def send_funds(wallet_obj):
             coin_symbol=coin_symbol,
             )
 
-    currency_abrev = COIN_SYMBOL_MAPPINGS[guess_cs_from_mkey(mpub)]['currency_abbrev']
-    click.echo('What %s address do you want to send to?' % currency_abrev)
-    destination_address = click.prompt('฿', type=str)
-    while not is_valid_address_for_coinsymbol(destination_address,
-            coin_symbol=coin_symbol):
-        click.echo('Invalid %s address, try again' % currency_abrev)
-        destination_address = click.prompt('฿', type=str)
+    coin_symbol = guess_cs_from_mkey(mpub)
+    destination_address = get_dest_address(coin_symbol=coin_symbol,
+            show_instructions=True)
 
     VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send?' % (
             wallet_details['balance'])
@@ -248,7 +258,6 @@ def send_funds(wallet_obj):
     dest_satoshis = click.prompt('฿', type=click.IntRange(1,
         wallet_details['balance']))
 
-    # TODO: confirm value entered
     # TODO: add ability to set preference
 
     inputs = [{
@@ -308,7 +317,19 @@ def send_funds(wallet_obj):
             )
     verbose_print('TX Signatures: %s' % tx_signatures)
 
-    # FIXME: add final confirmation before broadcast
+    # final confirmation before broadcast
+
+    CONF_TEXT = 'Send %s satoshis (%s %s) to %s' % (
+            dest_satoshis,
+            satoshis_to_btc(dest_satoshis),
+            COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+            destination_address,
+            )
+
+    if not click.confirm(CONF_TEXT, default=True):
+        click.echo('Transaction Not Broadcast!')
+        return wallet_home_chooser(wallet_obj=wallet_obj,
+                show_instructions=True)
 
     broadcasted_tx = broadcast_signed_transaction(
             unsigned_tx=unsigned_tx,
@@ -316,16 +337,15 @@ def send_funds(wallet_obj):
             pubkeys=pubkeyhex_list,
             coin_symbol=coin_symbol,
     )
-    verbose_print('Broadcasted TX')
+    verbose_print('Broadcast TX Details:')
     verbose_print(json.dumps(broadcasted_tx, indent=2))
-
-    click.echo(broadcasted_tx['tx']['hash'])
 
     tx_url = get_tx_url(
             tx_hash=broadcasted_tx['tx']['hash'],
             coin_symbol=coin_symbol,
             )
-    click.echo(tx_url)
+    click.echo('Transaction %s Broadcast' % broadcasted_tx['tx']['hash'])
+    click.echo(tx_url, fg='blue')
 
     # Display updated wallet balance info
     display_balance_info(wallet_obj=wallet_obj)
@@ -337,19 +357,28 @@ def generate_offline_tx(wallet_obj):
     pass
 
 
+def get_wif_obj(network, show_instructions=True):
+    if show_instructions:
+        click.echo('Enter a private key (in WIF format) to send from?')
+
+    wif = click.prompt('฿', type=str).strip()
+    verbose_print(wif)
+    try:
+        return PrivateKey.from_wif(wif, network=network)
+    except Exception as e:
+        verbose_print(e)
+        click.echo('Invalid WIF %s, Please Try Again' % wif)
+        get_wif_obj(network=network, show_instructions=False)
+
+
 def sweep_funds_from_privkey(wallet_obj):
     mpub = wallet_obj.serialize_b58(private=False)
     coin_symbol = str(guess_cs_from_mkey(mpub))
+    network = guess_network_from_mkey(mpub)
 
-    pkey = click.prompt('Enter a private key (in WIF format) to send from?',
-            type=str)
-    # TODO: error checking if invalid wif
-    pkey_obj = PrivateKey.from_wif(pkey, network=guess_network_from_mkey(mpub))
-    pkey_addr = pkey_obj.get_public_key().to_address(compressed=True)
+    wif_obj = get_wif_obj(network, show_instructions=True)
 
-    verbose_print('%s from %s' % (pkey_addr, pkey))
-
-    # FIXME: sign and broadcast tx
+    pkey_addr = wif_obj.get_public_key().to_address(compressed=True)
 
     inputs = [{
             'address': pkey_addr,
@@ -377,8 +406,8 @@ def sweep_funds_from_privkey(wallet_obj):
 
     privkeyhex_list, pubkeyhex_list = [], []
     for _ in unsigned_tx['tx']['inputs']:
-        privkeyhex_list.append(pkey_obj.get_key())
-        pubkeyhex_list.append(pkey_obj.get_public_key().get_key(
+        privkeyhex_list.append(wif_obj.get_key())
+        pubkeyhex_list.append(wif_obj.get_public_key().get_key(
             compressed=True))
     verbose_print('Private Key List: %s' % privkeyhex_list)
     verbose_print('Public Key List: %s' % pubkeyhex_list)
@@ -420,11 +449,12 @@ def dump_private_keys(wallet_obj):
     Offline mechanism to dump everything
     '''
 
-    # TODO: pagination
+    click.echo('How many private keys (on each chain) do you want to see?')
+    num_keys = click.prompt('฿', type=click.IntRange(1, 10**5), default=5)
 
     click.echo('-'*50)
     for chain_int in (0, 1):
-        for current in range(0, 10):
+        for current in range(0, num_keys):
             path = "m/%d/%d" % (chain_int, current)
             if current == 0:
                 if chain_int == 0:
@@ -497,7 +527,7 @@ def wallet_home_chooser(wallet_obj, show_instructions=True):
             click.echo(' 0: Dump private keys (advanced users only)')
         else:
             click.echo(' 0: Dump active addresses (advanced users only)')
-    choice = click.prompt('฿', type=click.IntRange(0, 10))
+    choice = click.prompt('฿', type=click.IntRange(0, 4))
 
     if choice == 1:
         return display_new_receiving_addresses(wallet_obj=wallet_obj)
@@ -516,6 +546,7 @@ def wallet_home_chooser(wallet_obj, show_instructions=True):
         else:
             return dump_active_addresses(wallet_obj)
     else:
+        click.echo('Invalid Entry %s. Please Try Again.')
         return wallet_home_chooser(wallet_obj=wallet_obj,
                 show_instructions=False)
 
