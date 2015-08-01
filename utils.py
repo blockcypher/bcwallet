@@ -115,7 +115,7 @@ def find_hexkeypairs_from_bip32key_bc(pub_address_list, master_key,
                 privkeyhex = internal_child.private_key.get_key()
             else:
                 privkeyhex = None
-            return hexkeypair_dict_list.append({
+            hexkeypair_dict_list.append({
                 'pub_address': internal_child.to_address(),
                 'privkeyhex': privkeyhex,
                 'pubkeyhex': internal_child.public_key.get_key(compressed=True),
