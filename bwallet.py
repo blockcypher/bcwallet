@@ -48,16 +48,16 @@ def get_public_wallet_url(mpub):
 def display_balance_info(wallet_obj, verbose=False):
     mpub = wallet_obj.serialize_b58(private=False)
 
-    bc_wallet_name = get_blockcypher_walletname_from_mpub(
+    wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
             subchain_indices=[0, 1],
             )
 
-    verbose_print('Wallet Name: %s' % bc_wallet_name)
+    verbose_print('Wallet Name: %s' % wallet_name)
     verbose_print('API Key: %s' % BLOCKCYPHER_PUBLIC_API_KEY)
 
     wallet_details = get_wallet_details(
-            wallet_name=bc_wallet_name,
+            wallet_name=wallet_name,
             api_key=BLOCKCYPHER_PUBLIC_API_KEY,
             coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
             )
@@ -158,8 +158,7 @@ def display_new_receiving_addresses(wallet_obj):
     if not USER_ONLINE:
         click.echo('Blockcypher connection needed to see which addresses have been used.', fg='red')
         click.echo('You may dump all your addresses while offline by selecting option 0.')
-        return wallet_home_chooser(wallet_obj=wallet_obj,
-                show_instructions=True)
+        return
 
     mpub = wallet_obj.serialize_b58(private=False)
 
@@ -178,18 +177,13 @@ def display_new_receiving_addresses(wallet_obj):
             unused_receiving_address['address'],
             unused_receiving_address['path'],
             ))
-    # TODO: add option for when there is no internet connection
-    # Just tells you to use the advanced settings to dump
-
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
 
 def display_recent_txs(wallet_obj):
     if not USER_ONLINE:
         click.echo('Blockcypher connection needed to find transactions related to your addresses.', fg='red')
         click.echo('You may dump all your addresses while offline by selecting option 0.')
-        return wallet_home_chooser(wallet_obj=wallet_obj,
-                show_instructions=True)
+        return
 
     mpub = wallet_obj.serialize_b58(private=False)
     wallet_name = get_blockcypher_walletname_from_mpub(
@@ -220,19 +214,17 @@ def display_recent_txs(wallet_obj):
 
     click.secho('For details, see: %s' % get_public_wallet_url(mpub), fg='blue')
 
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
-
 
 def get_dest_address(coin_symbol, show_instructions=True):
-    currency_abbrev = COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev']
+    display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
     if show_instructions:
-        click.echo('What %s address do you want to send to?' % currency_abbrev)
+        click.echo('What %s address do you want to send to?' % display_shortname)
     destination_address = click.prompt('฿', type=str).strip()
     if is_valid_address_for_coinsymbol(destination_address,
             coin_symbol=coin_symbol):
         return destination_address
     else:
-        click.echo('Invalid %s address, try again' % currency_abbrev)
+        click.echo('Invalid %s address, try again' % display_shortname)
         return get_dest_address(coin_symbol=coin_symbol,
                 show_instructions=False)
 
@@ -241,8 +233,7 @@ def send_funds(wallet_obj):
     if not USER_ONLINE:
         click.echo('Blockcypher connection needed to fetch unspents and broadcast signed transaction.', fg='red')
         click.echo('You may dump all your addresses and private keys while offline by selecting option 0.')
-        return wallet_home_chooser(wallet_obj=wallet_obj,
-                show_instructions=True)
+        return
 
     mpub = wallet_obj.serialize_b58(private=False)
     mpriv = wallet_obj.serialize_b58(private=True)
@@ -270,7 +261,7 @@ def send_funds(wallet_obj):
     dest_satoshis = click.prompt('฿', type=click.IntRange(1,
         wallet_details['balance']))
 
-    # TODO: add ability to set preference
+    # TODO: add ability to set tx confirmation preference
 
     inputs = [{
             'wallet_name': wallet_name,
@@ -305,13 +296,17 @@ def send_funds(wallet_obj):
     verbose_print(json.dumps(unsigned_tx, indent=2))
 
     input_addresses = get_input_addresses(unsigned_tx)
+    verbose_print('input_addresses')
+    verbose_print(input_addresses)
     hexkeypair_list = find_hexkeypairs_from_bip32key_bc(
         pub_address_list=input_addresses,
         master_key=mpriv,
-        network=guess_network_from_mkey(mpub),
+        network=guess_network_from_mkey(mpriv),
         starting_pos=0,
         depth=100,
         )
+    verbose_print('hexkeypair_list:')
+    verbose_print(hexkeypair_list)
     hexkeypair_dict = hexkeypair_list_to_dict(hexkeypair_list)
 
     if len(hexkeypair_dict.keys()) != len(input_addresses):
@@ -344,8 +339,7 @@ def send_funds(wallet_obj):
 
     if not click.confirm(CONF_TEXT, default=True):
         click.echo('Transaction Not Broadcast!')
-        return wallet_home_chooser(wallet_obj=wallet_obj,
-                show_instructions=True)
+        return
 
     broadcasted_tx = broadcast_signed_transaction(
             unsigned_tx=unsigned_tx,
@@ -366,19 +360,15 @@ def send_funds(wallet_obj):
     # Display updated wallet balance info
     display_balance_info(wallet_obj=wallet_obj)
 
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
-
 
 def generate_offline_tx(wallet_obj):
     # TODO: implement
     click.echo('Feature Coming Soon')
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
 
 def broadcast_signed_tx(wallet_obj):
     # TODO: implement
     click.echo('Feature Coming Soon')
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
 
 def get_wif_obj(network, show_instructions=True):
@@ -398,8 +388,7 @@ def get_wif_obj(network, show_instructions=True):
 def sweep_funds_from_privkey(wallet_obj):
     if not USER_ONLINE:
         click.echo('Blockcypher connection needed to fetch unspents and broadcast signed transaction.', fg='red')
-        return wallet_home_chooser(wallet_obj=wallet_obj,
-                show_instructions=True)
+        return
 
     mpub = wallet_obj.serialize_b58(private=False)
     coin_symbol = str(guess_cs_from_mkey(mpub))
@@ -470,8 +459,6 @@ def sweep_funds_from_privkey(wallet_obj):
     # Display updated wallet balance info
     display_balance_info(wallet_obj=wallet_obj)
 
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
-
 
 def dump_private_keys(wallet_obj):
     '''
@@ -499,8 +486,6 @@ def dump_private_keys(wallet_obj):
                 child_wallet.to_address(),
                 ))
 
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
-
 
 def dump_all_addresses(wallet_obj):
     '''
@@ -526,8 +511,6 @@ def dump_all_addresses(wallet_obj):
                 path,
                 child_wallet.to_address(),
                 ))
-
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
 
 def print_address_path_info(address, path, coin_symbol):
@@ -588,8 +571,6 @@ def dump_active_addresses(wallet_obj):
                 coin_symbol=coin_symbol,
                 )
 
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
-
 
 def dump_addresses(wallet_obj):
     if USER_ONLINE:
@@ -605,50 +586,6 @@ def dump_addresses(wallet_obj):
             return dump_active_addresses(wallet_obj=wallet_obj)
 
     return dump_all_addresses()
-
-
-def wallet_home_chooser(wallet_obj, show_instructions=True):
-    '''
-    Home menu selector for what to do
-    '''
-    # TODO: change options based on whether or not we're online
-
-    if show_instructions:
-        click.echo('-'*75)
-        click.echo('What do you want to do?:')
-        click.echo(' 1: Show new receiving addresses')
-        click.echo(' 2: Show recent transactions')
-        click.echo(' 3: Send funds (generate transaction, sign, & broadcast)')
-        click.echo(' 4: Sweep funds into bwallet from a private key you hold')
-        click.echo(' 5: Generate transaction for offline signing')
-        click.echo(' 6: Broadcast transaction previously signed offline')
-        if wallet_obj.private_key:
-            click.echo(' 0: Dump private keys and addresses (advanced users only)')
-        else:
-            click.echo(' 0: Dump addresses (advanced users only)')
-    choice = click.prompt('฿', type=click.IntRange(0, 6))
-
-    if choice == 1:
-        return display_new_receiving_addresses(wallet_obj=wallet_obj)
-    elif choice == 2:
-        return display_recent_txs(wallet_obj=wallet_obj)
-    elif choice == 3:
-        return send_funds(wallet_obj=wallet_obj)
-    elif choice == 4:
-        return sweep_funds_from_privkey(wallet_obj=wallet_obj)
-    elif choice == 5:
-        return generate_offline_tx(wallet_obj=wallet_obj)
-    elif choice == 6:
-        return broadcast_signed_tx(wallet_obj=wallet_obj)
-    elif choice == 0:
-        if wallet_obj.private_key:
-            return dump_private_keys(wallet_obj=wallet_obj)
-        else:
-            return dump_addresses(wallet_obj)
-    else:
-        click.echo('Invalid Entry %s. Please Try Again.')
-        return wallet_home_chooser(wallet_obj=wallet_obj,
-                show_instructions=False)
 
 
 def wallet_home(wallet_obj, show_welcome_msg=True):
@@ -683,7 +620,38 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
     display_balance_info(wallet_obj=wallet_obj)
 
     # Go to home screen
-    return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
+    while True:
+        click.echo('-'*75)
+        click.echo('What do you want to do?:')
+        click.echo(' 1: Show new receiving addresses')
+        click.echo(' 2: Show recent transactions')
+        click.echo(' 3: Send funds (generate transaction, sign, & broadcast)')
+        click.echo(' 4: Sweep funds into bwallet from a private key you hold')
+        click.echo(' 5: Generate transaction for offline signing')
+        click.echo(' 6: Broadcast transaction previously signed offline')
+        if wallet_obj.private_key:
+            click.echo(' 0: Dump private keys and addresses (advanced users only)')
+        else:
+            click.echo(' 0: Dump addresses (advanced users only)')
+        choice = click.prompt('฿', type=click.IntRange(0, 6))
+
+        if choice == 1:
+            display_new_receiving_addresses(wallet_obj=wallet_obj)
+        elif choice == 2:
+            display_recent_txs(wallet_obj=wallet_obj)
+        elif choice == 3:
+            send_funds(wallet_obj=wallet_obj)
+        elif choice == 4:
+            sweep_funds_from_privkey(wallet_obj=wallet_obj)
+        elif choice == 5:
+            generate_offline_tx(wallet_obj=wallet_obj)
+        elif choice == 6:
+            broadcast_signed_tx(wallet_obj=wallet_obj)
+        elif choice == 0:
+            if wallet_obj.private_key:
+                dump_private_keys(wallet_obj=wallet_obj)
+            else:
+                dump_addresses(wallet_obj)
 
 
 def coin_symbol_chooser():
@@ -767,6 +735,8 @@ def cli(wallet, verbose):
                 user_entropy=extra_entropy)
         mpriv = user_wallet_obj.serialize_b58(private=True)
         mpub = user_wallet_obj.serialize_b58(private=False)
+
+        # Dump info to screen and exit
         click.echo('Your master PRIVATE key is: %s' % mpriv)
         click.echo('Your master PUBLIC key is: %s' % mpub)
         click.echo('bwallet will now quit. Open your new wallet anytime like this:')
