@@ -59,11 +59,11 @@ def get_tx_url(tx_hash, coin_symbol):
     return 'https://live.blockcypher.com/%s/tx/%s/' % (coin_symbol, tx_hash)
 
 
-def find_hexkeypair_from_bip32key_bc(pub_address, master_key,
+def find_hexkeypairs_from_bip32key_bc(pub_address_list, master_key,
         network=BitcoinMainNet, starting_pos=0, depth=100):
     '''
     Given a bip32 master (extended) key, traverse both internal and external
-    paths to `depth` looking for a matching key. In blockcypher parlance,
+    paths to `depth` looking for keys matching pub_address_list. In blockcypher parlance,
     this is checking subchain_indexes == (0, 1)
 
     This does not use the bip32 default wallet layout as that requires a
@@ -87,68 +87,49 @@ def find_hexkeypair_from_bip32key_bc(pub_address, master_key,
     # defensive check:
     # assert is_valid_address(pub_address), pub_address
 
+    pub_address_set = set(pub_address_list)
     wallet_obj = Wallet.deserialize(master_key, network=network)
     external_chain_wallet = wallet_obj.get_child(0)  # m/0
     internal_chain_wallet = wallet_obj.get_child(1)  # m/1
 
     # traverse path
+    hexkeypair_dict_list = []
     for x in range(starting_pos, starting_pos+depth+1):
         external_path = "m/0/%d" % x
         internal_path = "m/1/%d" % x
         external_child = external_chain_wallet.get_child(x)
         internal_child = internal_chain_wallet.get_child(x)
-        if external_child.to_address() == pub_address:
+        if external_child.to_address() in pub_address_set:
             if external_child.private_key:
                 privkeyhex = external_child.private_key.get_key()
             else:
                 privkeyhex = None
-            return {
-                    'privkeyhex': privkeyhex,
-                    'pubkeyhex': external_child.public_key.get_key(
-                        compressed=True),
-                    'path': external_path,
-                    }
-        if internal_child.to_address() == pub_address:
+            hexkeypair_dict_list.append({
+                'pub_address': external_child.to_address(),
+                'privkeyhex': privkeyhex,
+                'pubkeyhex': external_child.public_key.get_key(compressed=True),
+                'path': external_path,
+                })
+        if internal_child.to_address() in pub_address_set:
             if internal_child.private_key:
                 privkeyhex = internal_child.private_key.get_key()
             else:
                 privkeyhex = None
-            return {
-                    'privkeyhex': privkeyhex,
-                    'pubkeyhex': internal_child.public_key.get_key(
-                        compressed=True),
-                    'path': internal_path,
-                    }
-    # No matches
-    return {
-            'privkeyhex': None,
-            'pubkeyhex': None,
-            'path': None,
-            }
+            return hexkeypair_dict_list.append({
+                'pub_address': internal_child.to_address(),
+                'privkeyhex': privkeyhex,
+                'pubkeyhex': internal_child.public_key.get_key(compressed=True),
+                'path': internal_path,
+                })
 
-    # traverse path
-    for x in range(starting_pos, starting_pos+depth+1):
-        path = "m/%d" % x
-        child = wallet_obj.get_child_for_path(path)
-        if child.to_address() == pub_address:
-            if wallet_obj.private_key:
-                privkeyhex = child.private_key.get_key()
-            else:
-                privkeyhex = None
-            return {
-                    'privkeyhex': privkeyhex,
-                    'pubkeyhex': child.public_key.get_key(compressed=True),
-                    'path': path,
-                    }
-    # No matches
-    return {
-            'privkeyhex': None,
-            'pubkeyhex': None,
-            'path': None,
-            }
+        # stop looking when all keypairs found
+        if len(hexkeypair_dict_list) == len(pub_address_list):
+            break
+
+    return hexkeypair_dict_list
 
 
-def find_hexkeypair_from_bip32key_linear(pub_address, master_key,
+def find_hexkeypairs_from_bip32key_linear(pub_address_list, master_key,
         network=BitcoinMainNet, starting_pos=0, depth=100):
     '''
     Given a bip32 master (extended) key, traverse linearly to `depth` looking
@@ -168,7 +149,11 @@ def find_hexkeypair_from_bip32key_linear(pub_address, master_key,
     Which can be used directly in TX signing.
     If extended_key is a public key then method returns no privkeyhex
     and cannot be used TX signing.
+
+    Note that the returned dictionary
     '''
+
+    pub_address_set = set(pub_address_list)
 
     # FIXME: deal with circular imports (depends on where this code ends up)
     # defensive check:
@@ -176,53 +161,34 @@ def find_hexkeypair_from_bip32key_linear(pub_address, master_key,
 
     wallet_obj = Wallet.deserialize(master_key, network=network)
 
+    hexkeypair_dict_list = []
     # traverse path
     for x in range(starting_pos, starting_pos+depth+1):
         path = "m/%d" % x
         child = wallet_obj.get_child_for_path(path)
-        if child.to_address() == pub_address:
+        if child.to_address() in pub_address_set:
             if wallet_obj.private_key:
                 privkeyhex = child.private_key.get_key()
             else:
                 privkeyhex = None
-            return {
-                    'privkeyhex': privkeyhex,
-                    'pubkeyhex': child.public_key.get_key(compressed=True),
-                    'path': path,
-                    }
-    # No matches
-    return {
-            'privkeyhex': None,
-            'pubkeyhex': None,
-            'path': None,
-            }
+            hexkeypair_dict_list.append({
+                'pub_address': child.to_address(),
+                'privkeyhex': privkeyhex,
+                'pubkeyhex': child.public_key.get_key(compressed=True),
+                'path': path,
+                })
+
+        # stop looking when all keypairs found
+        if len(hexkeypair_dict_list) == len(pub_address_list):
+            break
+
+    return hexkeypair_dict_list
 
 
-def find_path_from_bip32key_bc(pub_address, master_key,
-        network=BitcoinMainNet, starting_pos=0, depth=100):
-    '''
-    Especially useful when using extended public keys for the master key
-    '''
-    return find_hexkeypair_from_bip32key_bc(pub_address=pub_address,
-            master_key=master_key, network=network, starting_pos=starting_pos,
-            depth=depth)['path']
-
-
-def find_paths_from_bip32key_bc(pub_address_list, master_key,
-        network=BitcoinMainNet, starting_pos=0, depth=100):
-    '''
-    Bulk method for find_path_from_bip32masterkey
-
-    # TODO: re-write this for massive speedup
-    '''
-    paths = []
-    for pub_address in pub_address_list:
-        path = find_path_from_bip32key_bc(
-                pub_address=pub_address,
-                master_key=master_key,
-                network=network,
-                starting_pos=starting_pos,
-                depth=depth,
-                )
-        paths.append(path)
-    return paths
+def hexkeypair_list_to_dict(hexkeypair_list):
+    hexkeypair_dict = {}
+    for hexkeypair in hexkeypair_list:
+        pub_addr = hexkeypair['pub_address']
+        hexkeypair.pop(pub_addr)
+        hexkeypair_dict[pub_addr] = hexkeypair
+    return hexkeypair_dict

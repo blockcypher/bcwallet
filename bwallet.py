@@ -15,8 +15,9 @@ from blockcypher.utils import (is_valid_address_for_coinsymbol,
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from utils import (guess_network_from_mkey, guess_cs_from_mkey,
-        find_hexkeypair_from_bip32key_bc, find_paths_from_bip32key_bc,
-        get_tx_url, COIN_SYMBOL_TO_BMERCHANT_NETWORK, COIN_SYMBOL_LIST)
+        find_hexkeypairs_from_bip32key_bc, get_tx_url,
+        hexkeypair_list_to_dict, COIN_SYMBOL_TO_BMERCHANT_NETWORK,
+        COIN_SYMBOL_LIST)
 
 
 # FIXME: use a public API key that can be stored in source code
@@ -303,19 +304,23 @@ def send_funds(wallet_obj):
     verbose_print('Unsigned TX:')
     verbose_print(json.dumps(unsigned_tx, indent=2))
 
-    privkeyhex_list, pubkeyhex_list = [], []
-    for input_address in get_input_addresses(unsigned_tx):
-        hexkey_dict = find_hexkeypair_from_bip32key_bc(
-            pub_address=input_address,
-            master_key=mpriv,
-            network=guess_network_from_mkey(mpriv),  # FIXME: support all coins
-            )
+    input_addresses = get_input_addresses(unsigned_tx)
+    hexkeypair_list = find_hexkeypairs_from_bip32key_bc(
+        pub_address_list=input_addresses,
+        master_key=mpriv,
+        network=guess_network_from_mkey(mpub),
+        starting_pos=0,
+        depth=100,
+        )
+    hexkeypair_dict = hexkeypair_list_to_dict(hexkeypair_list)
 
-        err_msg = "Couldn't find %s traversing bip32 key" % input_address
-        assert hexkey_dict['privkeyhex'], err_msg
+    if len(hexkeypair_dict.keys()) != len(input_addresses):
+        notfound_addrs = set(input_addresses) - set(hexkeypair_dict.keys())
+        err_msg = "Couldn't find %s traversing bip32 key" % notfound_addrs
+        raise Exception('Traversal Fail: %s' % err_msg)
 
-        privkeyhex_list.append(hexkey_dict['privkeyhex'])
-        pubkeyhex_list.append(hexkey_dict['pubkeyhex'])
+    privkeyhex_list = [hexkeypair_dict[x]['privkeyhex'] for x in input_addresses]
+    pubkeyhex_list = [hexkeypair_dict[x]['pubkeyhex'] for x in input_addresses]
 
     verbose_print('Private Key List: %s' % privkeyhex_list)
     verbose_print('Public Key List: %s' % pubkeyhex_list)
@@ -525,6 +530,28 @@ def dump_all_addresses(wallet_obj):
     return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
 
+def print_address_path_info(address, path, coin_symbol):
+        if path:
+            path_display = path
+        else:
+            path_display = 'deeper traversal needed'
+        addr_balance = get_total_balance(
+                address=address,
+                coin_symbol=coin_symbol,
+                )
+        if not addr_balance:
+            # some addresses were used and subsequently emptied
+            return
+
+        click.echo('  %s (%s) - %s (%s %s)' % (
+                address,
+                path_display,
+                addr_balance,
+                satoshis_to_btc(addr_balance),
+                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+                ))
+
+
 def dump_active_addresses(wallet_obj):
     click.echo('Displaying Public Addresses Only')
     click.echo('For Private Keys, please open bwallet with your Master Private Key:')
@@ -535,31 +562,31 @@ def dump_active_addresses(wallet_obj):
     used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
 
     # get active addresses
-    paths = find_paths_from_bip32key_bc(
+    hexkeypairs = find_hexkeypairs_from_bip32key_bc(
             pub_address_list=used_addresses,
             master_key=mpub,
             network=guess_network_from_mkey(mpub),
             starting_pos=0,
-            depth=100,  # TODO: pagination & massive speed optimization
+            # TODO: get blockcypher to return paths for speed/quality increase
+            depth=100,
             )
 
-    for cnt, used_addr in enumerate(used_addresses):
-        path_display = paths[cnt]
-        if not path_display:
-            # TODO: pagination & massive speed optimization
-            path_display = 'deeper traversal needed'
-        addr_balance = get_total_balance(address=used_addr,
-                coin_symbol=coin_symbol)
-        if not addr_balance:
-            continue
-        click.echo('  %s (%s) - %s (%s %s)' % (
-                used_addr,
-                path_display,
-                # FIXME:
-                addr_balance,
-                satoshis_to_btc(addr_balance),
-                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
-                ))
+    for hexkeypair_dict in hexkeypairs:
+        print_address_path_info(
+                address=hexkeypair_dict['pub_address'],
+                path=hexkeypair_dict['path'],
+                coin_symbol=coin_symbol,
+                )
+
+    found_addresses = [x['pub_address'] for x in hexkeypairs]
+    notfound_addrs = set(used_addresses) - set(found_addresses)
+
+    for notfound_addr in notfound_addrs:
+        print_address_path_info(
+                address=notfound_addr,
+                path=None,
+                coin_symbol=coin_symbol,
+                )
 
     return wallet_home_chooser(wallet_obj=wallet_obj, show_instructions=True)
 
