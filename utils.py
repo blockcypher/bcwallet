@@ -70,13 +70,15 @@ def find_hexkeypairs_from_bip32key_bc(pub_address_list, master_key,
     hardened child wallet, which necesitates the private key or complicated
     management of multiple extended public keys.
 
-    `pub_address` looks like this for BTC: 1abc123...
+    `pub_address_list` looks like this for BTC: ['1abc123...', '1def456...']
     `master_key` looks like this for BTC: xpriv123abc (or xpub123abc)
 
     Returns a dict of:
+      - pub_address (supplied in pub_address_list)
       - privkeyhex
       - pubkeyhex
       - path
+      - wif
 
     Which can be used directly in TX signing.
     If extended_key is a public key then method returns no privkeyhex
@@ -102,24 +104,30 @@ def find_hexkeypairs_from_bip32key_bc(pub_address_list, master_key,
         if external_child.to_address() in pub_address_set:
             if external_child.private_key:
                 privkeyhex = external_child.private_key.get_key()
+                wif =  external_child.export_to_wif()
             else:
                 privkeyhex = None
+                wif = None
             hexkeypair_dict_list.append({
                 'pub_address': external_child.to_address(),
                 'privkeyhex': privkeyhex,
                 'pubkeyhex': external_child.public_key.get_key(compressed=True),
                 'path': external_path,
+                'wif': wif,
                 })
         if internal_child.to_address() in pub_address_set:
             if internal_child.private_key:
                 privkeyhex = internal_child.private_key.get_key()
+                wif =  external_child.export_to_wif()
             else:
                 privkeyhex = None
+                wif = None
             hexkeypair_dict_list.append({
                 'pub_address': internal_child.to_address(),
                 'privkeyhex': privkeyhex,
                 'pubkeyhex': internal_child.public_key.get_key(compressed=True),
                 'path': internal_path,
+                'wif': wif,
                 })
 
         # stop looking when all keypairs found
@@ -138,13 +146,15 @@ def find_hexkeypairs_from_bip32key_linear(pub_address_list, master_key,
     So it would go through m/0, m/1, m/2, m/3, etc.
     This path is not used in bwallet.
 
-    `pub_address` looks like this for BTC: 1abc123...
+    `pub_address_list` looks like this for BTC: ['1abc123...', '1def456...']
     `master_key` looks like this for BTC: xpriv123abc (or xpub123abc)
 
     Returns a dict of:
+      - pub_address (supplied in pub_address_list)
       - privkeyhex
       - pubkeyhex
       - path
+      - wif
 
     Which can be used directly in TX signing.
     If extended_key is a public key then method returns no privkeyhex
@@ -169,13 +179,16 @@ def find_hexkeypairs_from_bip32key_linear(pub_address_list, master_key,
         if child.to_address() in pub_address_set:
             if wallet_obj.private_key:
                 privkeyhex = child.private_key.get_key()
+                wif = child.export_to_wif()
             else:
                 privkeyhex = None
+                wif = None
             hexkeypair_dict_list.append({
                 'pub_address': child.to_address(),
                 'privkeyhex': privkeyhex,
                 'pubkeyhex': child.public_key.get_key(compressed=True),
                 'path': path,
+                'wif': wif,
                 })
 
         # stop looking when all keypairs found

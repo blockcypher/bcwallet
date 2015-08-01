@@ -466,10 +466,41 @@ def sweep_funds_from_privkey(wallet_obj):
     display_balance_info(wallet_obj=wallet_obj)
 
 
-def dump_private_keys(wallet_obj):
-    '''
-    Offline mechanism to dump everything
-    '''
+def print_key_path_info(address, wif, path, coin_symbol, skip_nobalance=False):
+    if path:
+        path_display = path
+    else:
+        path_display = 'deeper traversal needed'
+
+    if USER_ONLINE:
+        addr_balance = get_total_balance(
+                address=address,
+                coin_symbol=coin_symbol,
+                )
+        if skip_nobalance and not addr_balance:
+            # some addresses were used and subsequently emptied
+            return
+
+        click.echo('  %s (%s/%s) - %s satoshis (%s %s)' % (
+                path_display,
+                address,
+                wif,
+                addr_balance,
+                satoshis_to_btc(addr_balance),
+                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+                ))
+    else:
+        click.echo('  %s (%s/%s)' % (
+                path_display,
+                address,
+                wif,
+                ))
+
+
+def dump_all_keys(wallet_obj):
+
+    mpub = wallet_obj.serialize_b58(private=False)
+    coin_symbol = guess_cs_from_mkey(mpub)
 
     click.echo('How many private keys (on each chain) do you want to dump?')
     num_keys = click.prompt('฿', type=click.IntRange(1, 10**5), default=5,
@@ -481,22 +512,82 @@ def dump_private_keys(wallet_obj):
             path = "m/%d/%d" % (chain_int, current)
             if current == 0:
                 if chain_int == 0:
-                    click.echo('External Chain Addresses:')
+                    click.echo('External Chain:')
                 elif chain_int == 1:
-                    click.echo('Internal Chain Addresses:')
-                click.echo('  path,WIF,address')
+                    click.echo('Internal Chain:')
             child_wallet = wallet_obj.get_child_for_path(path)
-            click.echo('  %s,%s,%s' % (
-                path,
-                child_wallet.export_to_wif(),
-                child_wallet.to_address(),
-                ))
+            print_key_path_info(
+                    address=child_wallet.to_address(),
+                    path=path,
+                    wif=child_wallet.export_to_wif(),
+                    coin_symbol=coin_symbol,
+                    skip_nobalance=False,
+                    )
+
+
+def dump_active_keys(wallet_obj):
+    mpub = wallet_obj.serialize_b58(private=False)
+    coin_symbol = guess_cs_from_mkey(mpub)
+    used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
+
+    # get active addresses
+    hexkeypairs = find_hexkeypairs_from_bip32key_bc(
+            pub_address_list=used_addresses,
+            master_key=mpub,
+            network=guess_network_from_mkey(mpub),
+            starting_pos=0,
+            # TODO: get blockcypher to return paths for speed/quality increase
+            depth=100,
+            )
+
+    for hexkeypair_dict in hexkeypairs:
+        print_key_path_info(
+                address=hexkeypair_dict['pub_address'],
+                wif=hexkeypair_dict['wif'],
+                path=hexkeypair_dict['path'],
+                coin_symbol=coin_symbol,
+                skip_nobalance=True,
+                )
+
+    found_addresses = [x['pub_address'] for x in hexkeypairs]
+    notfound_addrs = set(used_addresses) - set(found_addresses)
+
+    for notfound_addr in notfound_addrs:
+        print_address_path_info(
+                address=notfound_addr,
+                path=None,
+                coin_symbol=coin_symbol,
+                skip_nobalance=True,
+                )
+
+
+def dump_private_keys(wallet_obj):
+    '''
+    Offline-enabled mechanism to dump everything
+    '''
+
+    if USER_ONLINE:
+        # Ask if they want active or all
+        click.echo('Which private keys do you want?')
+        click.echo(' 1: All private keys (regardless of whether they have funds to spend)')
+        click.echo(' 2: Active private keys (those with funds to spend)')
+        choice = click.prompt('฿', type=click.IntRange(1, 2), default=1,
+                show_default=False)
+        if choice == 1:
+            return dump_all_keys(wallet_obj=wallet_obj)
+        elif choice == 2:
+            return dump_active_keys(wallet_obj=wallet_obj)
+
+    return dump_all_keys(wallet_obj=wallet_obj)
 
 
 def dump_all_addresses(wallet_obj):
     '''
-    Offline mechanism to dump addresses
+    Offline-enabled mechanism to dump addresses
     '''
+
+    mpub = wallet_obj.serialize_b58(private=False)
+    coin_symbol = guess_cs_from_mkey(mpub)
 
     click.echo('How many addresses (on each chain) do you want to dump?')
     num_keys = click.prompt('฿', type=click.IntRange(1, 10**5), default=5,
@@ -511,34 +602,43 @@ def dump_all_addresses(wallet_obj):
                     click.echo('External Chain Addresses:')
                 elif chain_int == 1:
                     click.echo('Internal Chain Addresses:')
-                click.echo('  path,address')
+                click.echo('  address (path)')
             child_wallet = wallet_obj.get_child_for_path(path)
-            click.echo('  %s,%s' % (
-                path,
-                child_wallet.to_address(),
-                ))
+            print_address_path_info(
+                    address=child_wallet.to_address(),
+                    path=path,
+                    coin_symbol=coin_symbol,
+                    skip_nobalance=False,
+                    )
 
 
-def print_address_path_info(address, path, coin_symbol):
+def print_address_path_info(address, path, coin_symbol, skip_nobalance=False):
         if path:
             path_display = path
         else:
             path_display = 'deeper traversal needed'
-        addr_balance = get_total_balance(
-                address=address,
-                coin_symbol=coin_symbol,
-                )
-        if not addr_balance:
-            # some addresses were used and subsequently emptied
-            return
 
-        click.echo('  %s (%s) - %s (%s %s)' % (
-                address,
-                path_display,
-                addr_balance,
-                satoshis_to_btc(addr_balance),
-                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
-                ))
+        if USER_ONLINE:
+            addr_balance = get_total_balance(
+                    address=address,
+                    coin_symbol=coin_symbol,
+                    )
+            if skip_nobalance and not addr_balance:
+                # some addresses were used and subsequently emptied
+                return
+
+            click.echo('  %s (%s) - %s satoshis (%s %s)' % (
+                    address,
+                    path_display,
+                    addr_balance,
+                    satoshis_to_btc(addr_balance),
+                    COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+                    ))
+        else:
+            click.echo('  %s (%s)' % (
+                    address,
+                    path_display,
+                    ))
 
 
 def dump_active_addresses(wallet_obj):
@@ -565,6 +665,7 @@ def dump_active_addresses(wallet_obj):
                 address=hexkeypair_dict['pub_address'],
                 path=hexkeypair_dict['path'],
                 coin_symbol=coin_symbol,
+                skip_nobalance=True,
                 )
 
     found_addresses = [x['pub_address'] for x in hexkeypairs]
@@ -575,6 +676,7 @@ def dump_active_addresses(wallet_obj):
                 address=notfound_addr,
                 path=None,
                 coin_symbol=coin_symbol,
+                skip_nobalance=True,
                 )
 
 
@@ -591,7 +693,7 @@ def dump_addresses(wallet_obj):
         elif choice == 2:
             return dump_active_addresses(wallet_obj=wallet_obj)
 
-    return dump_all_addresses()
+    return dump_all_addresses(wallet_obj=wallet_obj)
 
 
 def wallet_home(wallet_obj, show_welcome_msg=True):
@@ -608,22 +710,23 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
             click.echo("If you like, you can always open your wallet in PUBLIC key mode like this:")
             click.echo('  $ bwallet --wallet=%s' % mpub)
 
-    wallet_name = get_blockcypher_walletname_from_mpub(
-            mpub=mpub,
-            subchain_indices=[0, 1],
-            )
+    if USER_ONLINE:
+        wallet_name = get_blockcypher_walletname_from_mpub(
+                mpub=mpub,
+                subchain_indices=[0, 1],
+                )
 
-    # Instruct blockcypher to track the wallet by pubkey
-    create_hd_wallet(
-            wallet_name=wallet_name,
-            xpubkey=mpub,
-            api_key=BLOCKCYPHER_PUBLIC_API_KEY,
-            coin_symbol=guess_cs_from_mkey(mpub),
-            subchain_indices=[0, 1],  # for internal and change addresses
-            )
+        # Instruct blockcypher to track the wallet by pubkey
+        create_hd_wallet(
+                wallet_name=wallet_name,
+                xpubkey=mpub,
+                api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+                coin_symbol=guess_cs_from_mkey(mpub),
+                subchain_indices=[0, 1],  # for internal and change addresses
+                )
 
-    # Display balance info
-    display_balance_info(wallet_obj=wallet_obj)
+        # Display balance info
+        display_balance_info(wallet_obj=wallet_obj)
 
     # Go to home screen
     while True:
