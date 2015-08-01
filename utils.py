@@ -188,7 +188,7 @@ def find_hexkeypairs_from_bip32key_linear(pub_address_list, master_key,
 def hexkeypair_list_to_dict(hexkeypair_list):
     hexkeypair_dict = {}
     for hexkeypair in hexkeypair_list:
-        pub_addr = hexkeypair['pub_address']
-        hexkeypair.pop(pub_addr)
-        hexkeypair_dict[pub_addr] = hexkeypair
+        pub_address = hexkeypair['pub_address']
+        hexkeypair.pop('pub_address')
+        hexkeypair_dict[pub_address] = hexkeypair
     return hexkeypair_dict
