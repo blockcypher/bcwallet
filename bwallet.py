@@ -295,6 +295,12 @@ def send_funds(wallet_obj):
     verbose_print('Unsigned TX:')
     verbose_print(json.dumps(unsigned_tx, indent=2))
 
+    if 'errors' in unsigned_tx:
+        print('TX Error(s): Tx NOT Signed or Broadcast')
+        for error in unsigned_tx['errors']:
+            print(error['error'])
+            return
+
     input_addresses = get_input_addresses(unsigned_tx)
     verbose_print('input_addresses')
     verbose_print(input_addresses)
