@@ -811,7 +811,7 @@ def cli(wallet, bc_api_key, verbose):
     '''
     Simple cryptocurrecy command line wallet.
 
-    Keys are generated and transactions are signed locally for trustless use. Blockchain heavy lifting powered by blockcyper.
+    Keys are generated and transactions are signed locally for trustless use. Blockchain heavy lifting powered by BlockCypher.
     '''
 
     if verbose:
