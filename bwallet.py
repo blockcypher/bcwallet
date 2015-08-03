@@ -49,7 +49,7 @@ def verbose_print(to_print):
 
 def get_public_wallet_url(mpub):
     # subchain indices set at 0 * 1
-    return 'https://live.blockcypher.com/%s/xpub/%s/0-1/' % (
+    return 'https://live.blockcypher.com/%s/xpub/%s/subchain-indices=0-1' % (
             coin_symbol_from_mkey(mpub),
             mpub,
             )
