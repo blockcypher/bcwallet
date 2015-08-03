@@ -11,13 +11,13 @@ from blockcypher import (create_hd_wallet, get_wallet_details,
         broadcast_signed_transaction, get_blockchain_overview,
         get_total_balance)
 from blockcypher.utils import (is_valid_address_for_coinsymbol,
-        satoshis_to_btc, get_blockcypher_walletname_from_mpub)
+        satoshis_to_btc, get_blockcypher_walletname_from_mpub,
+        coin_symbol_from_mkey, COIN_SYMBOL_LIST)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
-from utils import (guess_network_from_mkey, guess_cs_from_mkey,
-        find_hexkeypairs_from_bip32key_bc, get_tx_url,
-        hexkeypair_list_to_dict, print_without_rounding,
-        COIN_SYMBOL_TO_BMERCHANT_NETWORK, COIN_SYMBOL_LIST)
+from utils import (guess_network_from_mkey, find_hexkeypairs_from_bip32key_bc,
+        get_tx_url, hexkeypair_list_to_dict, print_without_rounding,
+        COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
 import json
 
@@ -37,7 +37,7 @@ def verbose_print(string):
 def get_public_wallet_url(mpub):
     # subchain indices set at 0 * 1
     return 'https://live.blockcypher.com/%s/xpub/%s/0-1/' % (
-            guess_cs_from_mkey(mpub),
+            coin_symbol_from_mkey(mpub),
             mpub,
             )
 
@@ -56,7 +56,7 @@ def display_balance_info(wallet_obj, verbose=False):
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
-            coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
+            coin_symbol=coin_symbol_from_mkey(mpub),
             )
     click.echo('-' * 50)
     click.secho('Total Received: %s' % wallet_details['total_received'],
@@ -92,7 +92,7 @@ def get_used_addresses(wallet_obj):
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
-            coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
+            coin_symbol=coin_symbol_from_mkey(mpub),
             )
 
     verbose_print(wallet_details)
@@ -166,7 +166,7 @@ def display_new_receiving_addresses(wallet_obj):
 
     click.echo('-' * 75)
     click.echo('Next 5 Unused %s Receiving Addresses (for people to send you funds):' %
-            COIN_SYMBOL_MAPPINGS[guess_cs_from_mkey(mpub)]['currency_abbrev']
+            COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev']
             )
 
     for unused_receiving_address in unused_receiving_addresses:
@@ -191,7 +191,7 @@ def display_recent_txs(wallet_obj):
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
-            coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
+            coin_symbol=coin_symbol_from_mkey(mpub),
             )
 
     # TODO: pagination for lots of transactions
@@ -205,7 +205,7 @@ def display_recent_txs(wallet_obj):
             tx.get('tx_hash'),
             tx.get('value'),
             print_without_rounding(satoshis_to_btc(tx.get('value', 0))),
-            COIN_SYMBOL_MAPPINGS[guess_cs_from_mkey(mpub)]['currency_abbrev'],
+            COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
             'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
             ))
 
@@ -235,7 +235,7 @@ def send_funds(wallet_obj):
     mpub = wallet_obj.serialize_b58(private=False)
     mpriv = wallet_obj.serialize_b58(private=True)
 
-    coin_symbol = str(guess_cs_from_mkey(mpub))
+    coin_symbol = str(coin_symbol_from_mkey(mpub))
     verbose_print(coin_symbol)
 
     wallet_name = get_blockcypher_walletname_from_mpub(
@@ -248,7 +248,6 @@ def send_funds(wallet_obj):
             coin_symbol=coin_symbol,
             )
 
-    coin_symbol = guess_cs_from_mkey(mpub)
     destination_address = get_dest_address(coin_symbol=coin_symbol,
             show_instructions=True)
 
@@ -394,7 +393,7 @@ def sweep_funds_from_privkey(wallet_obj):
         return
 
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = str(guess_cs_from_mkey(mpub))
+    coin_symbol = str(coin_symbol_from_mkey(mpub))
     network = guess_network_from_mkey(mpub)
 
     wif_obj = get_wif_obj(network, show_instructions=True)
@@ -404,6 +403,7 @@ def sweep_funds_from_privkey(wallet_obj):
     inputs = [{
             'address': pkey_addr,
             }, ]
+    verbose_print('Inputs:\n%s' % inputs)
 
     dest_addr = get_unused_receiving_addresses(
             wallet_obj=wallet_obj,
@@ -414,6 +414,7 @@ def sweep_funds_from_privkey(wallet_obj):
             'address': dest_addr,
             'value': -1,  # sweep value
             }, ]
+    verbose_print('Outputs:\n%s' % outputs)
 
     unsigned_tx = create_unsigned_tx(
         inputs=inputs,
@@ -424,6 +425,12 @@ def sweep_funds_from_privkey(wallet_obj):
         )
     verbose_print('Unsigned TX:')
     verbose_print(json.dumps(unsigned_tx, indent=2))
+
+    if 'errors' in unsigned_tx:
+        print('TX Error(s): Tx NOT Signed or Broadcast')
+        for error in unsigned_tx['errors']:
+            print(error['error'])
+            return
 
     privkeyhex_list, pubkeyhex_list = [], []
     for _ in unsigned_tx['tx']['inputs']:
@@ -441,7 +448,7 @@ def sweep_funds_from_privkey(wallet_obj):
             )
     verbose_print('TX Signatures: %s' % tx_signatures)
 
-    # FIXME: add final confirmation before broadcast
+    # TODO: add final confirmation before broadcast
 
     broadcasted_tx = broadcast_signed_transaction(
             unsigned_tx=unsigned_tx,
@@ -497,7 +504,7 @@ def print_key_path_info(address, wif, path, coin_symbol, skip_nobalance=False):
 def dump_all_keys(wallet_obj):
 
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = guess_cs_from_mkey(mpub)
+    coin_symbol = coin_symbol_from_mkey(mpub)
 
     click.echo('How many private keys (on each chain) do you want to dump?')
     num_keys = click.prompt('฿', type=click.IntRange(1, 10**5), default=5,
@@ -523,14 +530,15 @@ def dump_all_keys(wallet_obj):
 
 
 def dump_active_keys(wallet_obj):
+    mpriv = wallet_obj.serialize_b58(private=True)
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = guess_cs_from_mkey(mpub)
+    coin_symbol = coin_symbol_from_mkey(mpub)
     used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
 
     # get active addresses
     hexkeypairs = find_hexkeypairs_from_bip32key_bc(
             pub_address_list=used_addresses,
-            master_key=mpub,
+            master_key=mpriv,
             network=guess_network_from_mkey(mpub),
             starting_pos=0,
             # TODO: get blockcypher to return paths for speed/quality increase
@@ -584,7 +592,7 @@ def dump_all_addresses(wallet_obj):
     '''
 
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = guess_cs_from_mkey(mpub)
+    coin_symbol = coin_symbol_from_mkey(mpub)
 
     click.echo('How many addresses (on each chain) do you want to dump?')
     num_keys = click.prompt('฿', type=click.IntRange(1, 10**5), default=5,
@@ -644,7 +652,7 @@ def dump_active_addresses(wallet_obj):
     click.echo('  $ bwallet --wallet=xpriv123...')
 
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = guess_cs_from_mkey(mpub)
+    coin_symbol = coin_symbol_from_mkey(mpub)
     used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
 
     # get active addresses
@@ -718,7 +726,7 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
                 wallet_name=wallet_name,
                 xpubkey=mpub,
                 api_key=BLOCKCYPHER_API_KEY,
-                coin_symbol=guess_cs_from_mkey(mpub),
+                coin_symbol=coin_symbol_from_mkey(mpub),
                 subchain_indices=[0, 1],  # for internal and change addresses
                 )
 
