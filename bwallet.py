@@ -16,8 +16,8 @@ from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from utils import (guess_network_from_mkey, guess_cs_from_mkey,
         find_hexkeypairs_from_bip32key_bc, get_tx_url,
-        hexkeypair_list_to_dict, COIN_SYMBOL_TO_BMERCHANT_NETWORK,
-        COIN_SYMBOL_LIST)
+        hexkeypair_list_to_dict, print_without_rounding,
+        COIN_SYMBOL_TO_BMERCHANT_NETWORK, COIN_SYMBOL_LIST)
 
 
 # FIXME: use a public API key that can be stored in source code
@@ -207,7 +207,7 @@ def display_recent_txs(wallet_obj):
         click.echo('Transaction %s: %s satoshis (%s %s) %s' % (
             tx.get('tx_hash'),
             tx.get('value'),
-            satoshis_to_btc(tx.get('value', 0)),
+            print_without_rounding(satoshis_to_btc(tx.get('value', 0))),
             COIN_SYMBOL_MAPPINGS[guess_cs_from_mkey(mpub)]['currency_abbrev'],
             'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
             ))
@@ -338,7 +338,7 @@ def send_funds(wallet_obj):
 
     CONF_TEXT = 'Send %s satoshis (%s %s) to %s' % (
             dest_satoshis,
-            satoshis_to_btc(dest_satoshis),
+            print_without_rounding(satoshis_to_btc(dest_satoshis)),
             COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
             destination_address,
             )
@@ -486,7 +486,7 @@ def print_key_path_info(address, wif, path, coin_symbol, skip_nobalance=False):
                 address,
                 wif,
                 addr_balance,
-                satoshis_to_btc(addr_balance),
+                print_without_rounding(satoshis_to_btc(addr_balance)),
                 COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
                 ))
     else:
@@ -631,7 +631,7 @@ def print_address_path_info(address, path, coin_symbol, skip_nobalance=False):
                     address,
                     path_display,
                     addr_balance,
-                    satoshis_to_btc(addr_balance),
+                    print_without_rounding(satoshis_to_btc(addr_balance)),
                     COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
                     ))
         else:
