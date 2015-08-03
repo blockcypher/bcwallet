@@ -19,6 +19,8 @@ from utils import (guess_network_from_mkey, find_hexkeypairs_from_bip32key_bc,
         get_tx_url, hexkeypair_list_to_dict, print_without_rounding,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
+from datetime import datetime
+
 import json
 
 
@@ -29,9 +31,20 @@ USER_ONLINE = False
 BLOCKCYPHER_API_KEY = '9c339f92713518492a4504c273d1d9f9'
 
 
-def verbose_print(string):
+class DateTimeEncoder(json.JSONEncoder):
+    # http://stackoverflow.com/a/27058505/1754586
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+
+        return json.JSONEncoder.default(self, o)
+
+
+def verbose_print(to_print):
     if VERBOSE_MODE:
-        click.secho(str(string), fg='yellow')
+        if type(to_print) is dict:
+            to_print = json.dumps(to_print, cls=DateTimeEncoder, indent=2)
+        click.secho(str(to_print), fg='yellow')
 
 
 def get_public_wallet_url(mpub):
@@ -43,6 +56,9 @@ def get_public_wallet_url(mpub):
 
 
 def display_balance_info(wallet_obj, verbose=False):
+    if not USER_ONLINE:
+        return
+
     mpub = wallet_obj.serialize_b58(private=False)
 
     wallet_name = get_blockcypher_walletname_from_mpub(
@@ -58,6 +74,8 @@ def display_balance_info(wallet_obj, verbose=False):
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol_from_mkey(mpub),
             )
+    verbose_print(wallet_details)
+
     click.echo('-' * 50)
     click.secho('Total Received: %s' % wallet_details['total_received'],
             bg='white')
@@ -94,7 +112,6 @@ def get_used_addresses(wallet_obj):
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol_from_mkey(mpub),
             )
-
     verbose_print(wallet_details)
 
     return set(wallet_details['wallet'].get('addresses', []))
@@ -182,6 +199,9 @@ def display_recent_txs(wallet_obj):
         click.echo('You may dump all your addresses while offline by selecting option 0.')
         return
 
+    # Show overall balance info
+    display_balance_info(wallet_obj=wallet_obj)
+
     mpub = wallet_obj.serialize_b58(private=False)
     wallet_name = get_blockcypher_walletname_from_mpub(
             mpub=mpub,
@@ -193,6 +213,7 @@ def display_recent_txs(wallet_obj):
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol_from_mkey(mpub),
             )
+    verbose_print(wallet_details)
 
     # TODO: pagination for lots of transactions
     if not wallet_details.get('txrefs'):
@@ -208,8 +229,6 @@ def display_recent_txs(wallet_obj):
             COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
             'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
             ))
-
-    click.secho('For details, see: %s' % get_public_wallet_url(mpub), fg='blue')
 
 
 def get_dest_address(coin_symbol, show_instructions=True):
@@ -247,6 +266,7 @@ def send_funds(wallet_obj):
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol,
             )
+    verbose_print(wallet_details)
 
     destination_address = get_dest_address(coin_symbol=coin_symbol,
             show_instructions=True)
@@ -274,9 +294,9 @@ def send_funds(wallet_obj):
             )[0]['address']
 
     verbose_print('Inputs:')
-    verbose_print(json.dumps(inputs, indent=2))
+    verbose_print(inputs)
     verbose_print('Outputs:')
-    verbose_print(json.dumps(outputs, indent=2))
+    verbose_print(outputs)
     verbose_print('Change Address: %s' % change_address)
     verbose_print('coin symbol: %s' % coin_symbol)
 
@@ -289,7 +309,7 @@ def send_funds(wallet_obj):
         )
 
     verbose_print('Unsigned TX:')
-    verbose_print(json.dumps(unsigned_tx, indent=2))
+    verbose_print(unsigned_tx)
 
     if 'errors' in unsigned_tx:
         print('TX Error(s): Tx NOT Signed or Broadcast')
@@ -350,7 +370,7 @@ def send_funds(wallet_obj):
             coin_symbol=coin_symbol,
     )
     verbose_print('Broadcast TX Details:')
-    verbose_print(json.dumps(broadcasted_tx, indent=2))
+    verbose_print(broadcasted_tx)
 
     tx_url = get_tx_url(
             tx_hash=broadcasted_tx['tx']['hash'],
@@ -424,7 +444,7 @@ def sweep_funds_from_privkey(wallet_obj):
         verify_tosigntx=True,  # guarantees we are signing the right TX
         )
     verbose_print('Unsigned TX:')
-    verbose_print(json.dumps(unsigned_tx, indent=2))
+    verbose_print(unsigned_tx)
 
     if 'errors' in unsigned_tx:
         print('TX Error(s): Tx NOT Signed or Broadcast')
@@ -457,7 +477,7 @@ def sweep_funds_from_privkey(wallet_obj):
             coin_symbol=coin_symbol,
     )
     verbose_print('Broadcasted TX')
-    verbose_print(json.dumps(broadcasted_tx, indent=2))
+    verbose_print(broadcasted_tx)
 
     click.echo(broadcasted_tx['tx']['hash'])
     tx_url = get_tx_url(
@@ -843,7 +863,7 @@ def cli(wallet, bc_api_key, verbose):
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
         click.echo("Let's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency. Please bang on the keyboard for as long as you like and then hit enter. There's no reason to record this value, it cannot be used to recover your keys.")
-        extra_entropy = click.prompt("฿", hide_input=True)
+        extra_entropy = click.prompt("฿ (optional)", hide_input=True)
 
         verbose_print(extra_entropy)
         # worst-case assumption (attacker knows keyspace and length)
