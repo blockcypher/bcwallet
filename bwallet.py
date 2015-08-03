@@ -19,17 +19,14 @@ from utils import (guess_network_from_mkey, guess_cs_from_mkey,
         hexkeypair_list_to_dict, print_without_rounding,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK, COIN_SYMBOL_LIST)
 
-
-# FIXME: use a public API key that can be stored in source code
-with open('.env', 'r') as f:
-    import json
-    BLOCKCYPHER_PUBLIC_API_KEY = json.loads(f.read())['BLOCKCYPHER_PUBLIC_API_KEY']
-assert BLOCKCYPHER_PUBLIC_API_KEY
+import json
 
 
 # Globals that can be overwritten at startup
 VERBOSE_MODE = False
 USER_ONLINE = False
+# For all bwallet users:
+BLOCKCYPHER_API_KEY = '9c339f92713518492a4504c273d1d9f9'
 
 
 def verbose_print(string):
@@ -54,11 +51,11 @@ def display_balance_info(wallet_obj, verbose=False):
             )
 
     verbose_print('Wallet Name: %s' % wallet_name)
-    verbose_print('API Key: %s' % BLOCKCYPHER_PUBLIC_API_KEY)
+    verbose_print('API Key: %s' % BLOCKCYPHER_API_KEY)
 
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
-            api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+            api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
             )
     click.echo('-' * 50)
@@ -94,7 +91,7 @@ def get_used_addresses(wallet_obj):
 
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
-            api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+            api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
             )
 
@@ -193,7 +190,7 @@ def display_recent_txs(wallet_obj):
 
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
-            api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+            api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=guess_cs_from_mkey(mpub),  # FIXME: fails for BCY!
             )
 
@@ -247,7 +244,7 @@ def send_funds(wallet_obj):
             )
     wallet_details = get_wallet_details(
             wallet_name=wallet_name,
-            api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+            api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol,
             )
 
@@ -265,7 +262,7 @@ def send_funds(wallet_obj):
 
     inputs = [{
             'wallet_name': wallet_name,
-            'wallet_token': BLOCKCYPHER_PUBLIC_API_KEY,
+            'wallet_token': BLOCKCYPHER_API_KEY,
             }, ]
     outputs = [{
             'value': dest_satoshis,
@@ -720,7 +717,7 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
         create_hd_wallet(
                 wallet_name=wallet_name,
                 xpubkey=mpub,
-                api_key=BLOCKCYPHER_PUBLIC_API_KEY,
+                api_key=BLOCKCYPHER_API_KEY,
                 coin_symbol=guess_cs_from_mkey(mpub),
                 subchain_indices=[0, 1],  # for internal and change addresses
                 )
@@ -779,9 +776,10 @@ def coin_symbol_chooser():
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--wallet', help='Master private or public key (starts with xprv and xpub for BTC)')
+@click.option('--bc-api-key', help='Blockcypher API Key to use. If not supplied the default will be used.')
 @click.option('--verbose', is_flag=True, help='Show detailed logging info.', default=False)
 @click.version_option()
-def cli(wallet, verbose):
+def cli(wallet, bc_api_key, verbose):
     '''
     Simple cryptocurrecy command line wallet.
 
@@ -791,6 +789,11 @@ def cli(wallet, verbose):
     if verbose:
         global VERBOSE_MODE
         VERBOSE_MODE = True
+
+    if bc_api_key:
+        global BLOCKCYPHER_API_KEY
+        verbose_print('API Key: %s' % BLOCKCYPHER_API_KEY)
+        BLOCKCYPHER_API_KEY = bc_api_key
 
     # Check if blockcypher is up (basically if the user's machine is online)
     global USER_ONLINE
