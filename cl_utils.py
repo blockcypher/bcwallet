@@ -186,10 +186,11 @@ def confirm(user_prompt=DEFAULT_PROMPT, default=False):
 
 def print_pubwallet_notice(mpub):
     coin_symbol = coin_symbol_from_mkey(mpub)
+    first4 = COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
     puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
     puts("To sign transactions, open your wallet in private key mode like this:")
     puts('')
     with indent(2):
-        first4 = COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
-        puts(colored.magenta('% bwallet --wallet=%s....' % first4))
+        to_print = '$ bwallet --wallet=%s....' % first4
+        puts(colored.magenta(to_print))
     puts('')
