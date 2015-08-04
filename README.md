@@ -1,6 +1,7 @@
 bwallet is still under development and not ready for production use. You could very well lose money. Use at your own risk.
 
-pypi support to follow when bwallet is ready for primetime and will work as follows:
+To get started (you may want to first `cd` to a folder where the
+virtualenv will be created):
 ```
 $ virtualenv --python=python2 venv  # see python2 note below 
 $ . venv/bin/activate
