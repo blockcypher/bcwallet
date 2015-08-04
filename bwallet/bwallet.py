@@ -1000,7 +1000,7 @@ def cli():
         with indent(4):
             puts(colored.magenta('$ bwallet --wallet=%s' % mpriv))
         puts('')
-        puts("You may also open your wallet like this (useful if you'd like to encrypt your master private key and/or don't want it in your bash history):")
+        puts("You may also open your wallet like this, which is useful if you'd like to encrypt your master private key and/or don't want it in your bash history (use `cat` instead of echo):")
         puts('')
         with indent(4):
             puts(colored.magenta('$ echo %s | bwallet' % mpriv))
