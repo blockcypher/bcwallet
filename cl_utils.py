@@ -5,7 +5,8 @@
 from clint.textui import puts, colored, indent
 from getpass import getpass
 
-from blockcypher.utils import is_valid_address_for_coinsymbol
+from blockcypher.utils import (is_valid_address_for_coinsymbol,
+        coin_symbol_from_mkey)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS, COIN_SYMBOL_LIST
 
 from bitmerchant.wallet.keys import PrivateKey
@@ -41,10 +42,13 @@ def debug_print(to_print):
 
 
 def choice_prompt(user_prompt=DEFAULT_PROMPT, acceptable_responses=[],
-        default_input=None, show_default=True):
+        default_input=None, show_default=True, quit_ok=False):
 
     assert len(acceptable_responses) > 0, acceptable_responses
     acceptable_responses = [str(x) for x in acceptable_responses]
+
+    if quit_ok:
+        acceptable_responses.extend(['q', 'Q'])
 
     if default_input and show_default:
         prompt_to_use = '%s [%s]: ' % (user_prompt, default_input)
@@ -73,10 +77,12 @@ def get_user_entropy(user_prompt=DEFAULT_PROMPT):
 
 
 def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None):
-    user_int = raw_input('%s: ' % user_prompt)
+    user_int = raw_input('%s: ' % user_prompt).strip()
     if default_input and not user_int:
         return default_input
-    if not user_int or type(int(user_int)) is not int:
+    try:
+        int(user_int)
+    except ValueError:
         puts(colored.red('%s is not an integer. Please try again.' % user_int))
         return get_int(max_int=max_int)
     if int(user_int) < min_int:
@@ -141,7 +147,7 @@ def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
 
 
 def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
-    puts('How quickly do you want this transaction to confirm? The higher the preferenc, the higher the transaction fee.')
+    puts('How quickly do you want this transaction to confirm? The higher the preference, the higher the transaction fee.')
     TXN_PREFERENCES = (
             ('high', '1-2 blocks to confirm'),
             ('medium', '3-6 blocks to confirm'),
@@ -151,7 +157,7 @@ def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
     for cnt, pref_desc in enumerate(TXN_PREFERENCES):
         pref, desc = pref_desc
         with indent(2):
-            puts(colored.cyan('%s (%s priority): %s)' % (cnt+1, pref, desc)))
+            puts(colored.cyan('%s (%s priority): %s' % (cnt+1, pref, desc)))
     choice_int = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
             acceptable_responses=range(1, len(TXN_PREFERENCES)),
@@ -176,3 +182,14 @@ def confirm(user_prompt=DEFAULT_PROMPT, default=False):
     else:
         puts(colored.red('%s is not a valid entry. Please enter either Y or N.' % user_input))
         return confirm(user_prompt=user_prompt, default=default)
+
+
+def print_pubwallet_notice(mpub):
+    coin_symbol = coin_symbol_from_mkey(mpub)
+    puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
+    puts("To sign transactions, open your wallet in private key mode like this:")
+    puts('')
+    with indent(2):
+        first4 = COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
+        puts(colored.magenta('% bwallet --wallet=%s....' % first4))
+    puts('')

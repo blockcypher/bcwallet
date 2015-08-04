@@ -22,7 +22,8 @@ from bc_utils import (guess_network_from_mkey,
 
 from cl_utils import (print_without_rounding, debug_print, choice_prompt,
         get_crypto_address, get_wif_obj, get_int, confirm, get_user_entropy,
-        coin_symbol_chooser, txn_preference_chooser, DEFAULT_PROMPT)
+        coin_symbol_chooser, txn_preference_chooser, print_pubwallet_notice,
+        DEFAULT_PROMPT)
 
 
 # Globals that can be overwritten at startup
@@ -209,8 +210,15 @@ def display_recent_txs(wallet_obj):
     txs = wallet_details.get('unconfirmed_txrefs', []) \
             + wallet_details.get('txrefs', [])
     for tx in txs:
-        puts('Transaction %s: %s satoshis (%s %s) %s' % (
+        # Logic copied from block explorer
+        # templates/address_overview.html
+        if tx.get('received'):
+            tx_time = tx.get('received')
+        else:
+            tx_time = tx.get('confirmed')
+        puts('Transaction %s on %s GMT: %s satoshis (%s %s) %s' % (
             tx.get('tx_hash'),
+            tx_time.strftime("%Y-%m-%d %H:%M"),
             tx.get('value'),
             print_without_rounding(satoshis_to_btc(tx.get('value', 0))),
             COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
@@ -225,6 +233,10 @@ def send_funds(wallet_obj):
         return
 
     mpub = wallet_obj.serialize_b58(private=False)
+    if not wallet_obj.private_key:
+        print_pubwallet_notice(mpub=mpub)
+        return
+
     mpriv = wallet_obj.serialize_b58(private=True)
 
     coin_symbol = str(coin_symbol_from_mkey(mpub))
@@ -245,15 +257,13 @@ def send_funds(wallet_obj):
     puts('What %s address do you want to send to?' % display_shortname)
     destination_address = get_crypto_address(coin_symbol=coin_symbol)
 
-    VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send? Note that due to transaction fes your full balance may not be available to send.' % (
+    VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
             wallet_details['balance'])
     puts(VALUE_PROMPT)
     dest_satoshis = get_int(
             max_int=wallet_details['balance'],
             user_prompt=DEFAULT_PROMPT,
             )
-
-    # TODO: add ability to set tx confirmation preference
 
     inputs = [{
             'wallet_name': wallet_name,
@@ -288,6 +298,7 @@ def send_funds(wallet_obj):
         # will verify in the next step,
         # that way if there is an error here we can display that to user
         verify_tosigntx=False,
+        include_tosigntx=True,
         )
 
     verbose_print('Unsigned TX:')
@@ -297,7 +308,8 @@ def send_funds(wallet_obj):
         puts(colored.red('TX Error(s): Tx NOT Signed or Broadcast'))
         for error in unsigned_tx['errors']:
             puts(colored.red(error['error']))
-            return
+        # Abandon
+        return
 
     # Verify TX requested to sign is as expected
     tx_is_correct, err_msg = verify_unsigned_tx(
@@ -311,6 +323,8 @@ def send_funds(wallet_obj):
     if not tx_is_correct:
         puts(colored.red('TX Error: Tx NOT Signed or Broadcast'))
         puts(colored.red(err_msg))
+        # Abandon
+        return
 
     input_addresses = get_input_addresses(unsigned_tx)
     verbose_print('input_addresses')
@@ -355,7 +369,7 @@ def send_funds(wallet_obj):
             )
 
     puts(CONF_TEXT)
-    if not confirm(user_prompt='฿:', default=True):
+    if not confirm(user_prompt=DEFAULT_PROMPT, default=True):
         puts(colored.red('Transaction Not Broadcast!'))
         return
 
@@ -381,11 +395,19 @@ def send_funds(wallet_obj):
 
 
 def generate_offline_tx(wallet_obj):
+    if not USER_ONLINE:
+        puts(colored.red('Blockcypher connection needed to fetch unspents for signing.'))
+        return
+
     # TODO: implement
     puts('Feature Coming Soon')
 
 
 def broadcast_signed_tx(wallet_obj):
+    if not USER_ONLINE:
+        puts(colored.red('Blockcypher connection needed to broadcast signed transaction.'))
+        return
+
     # TODO: implement
     puts('Feature Coming Soon')
 
@@ -428,6 +450,7 @@ def sweep_funds_from_privkey(wallet_obj):
         # will verify in the next step,
         # that way if there is an error here we can display that to user
         verify_tosigntx=False,
+        include_tosigntx=True,
         )
     verbose_print('Unsigned TX:')
     verbose_print(unsigned_tx)
@@ -436,7 +459,8 @@ def sweep_funds_from_privkey(wallet_obj):
         puts(colored.red('TX Error(s): Tx NOT Signed or Broadcast'))
         for error in unsigned_tx['errors']:
             puts(colored.red(error['error']))
-            return
+        # Abandon
+        return
 
     # Verify TX requested to sign is as expected
     tx_is_correct, err_msg = verify_unsigned_tx(
@@ -450,6 +474,8 @@ def sweep_funds_from_privkey(wallet_obj):
     if not tx_is_correct:
         puts(colored.red('TX Error: Tx NOT Signed or Broadcast'))
         puts(colored.red(err_msg))
+        # Abandon
+        return
 
     privkeyhex_list, pubkeyhex_list = [], []
     for _ in unsigned_tx['tx']['inputs']:
@@ -744,20 +770,49 @@ def dump_addresses(wallet_obj):
     return dump_all_addresses(wallet_obj=wallet_obj)
 
 
-def wallet_home(wallet_obj, show_welcome_msg=True):
+def send_chooser(wallet_obj):
+    with indent(2):
+        puts(colored.cyan('1: Basic send (generate transaction, sign, & broadcast)'))
+        puts(colored.cyan('2: Sweep funds into bwallet from a private key you hold'))
+        puts(colored.cyan('3: Generate transaction for offline signing'))
+        puts(colored.cyan('4: Broadcast transaction previously signed offline'))
+
+    choice = choice_prompt(
+            user_prompt=DEFAULT_PROMPT,
+            acceptable_responses=range(0, 3+1),
+            quit_ok=True,
+            default_input='1',
+            show_default=True,
+            )
+    verbose_print('Choice: %s' % choice)
+
+    if choice in ('q', 'Q'):
+        return
+    elif choice == '1':
+        return send_funds(wallet_obj=wallet_obj)
+    elif choice == '2':
+        return sweep_funds_from_privkey(wallet_obj=wallet_obj)
+    elif choice == '3':
+        return generate_offline_tx(wallet_obj=wallet_obj)
+    elif choice == '4':
+        return broadcast_signed_tx(wallet_obj=wallet_obj)
+
+
+def wallet_home(wallet_obj):
     '''
     Loaded on bootup (and likely never again)
     '''
     mpub = wallet_obj.serialize_b58(private=False)
 
-    if show_welcome_msg:
-        if wallet_obj.private_key is None:
-            puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
-        else:
-            puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
-            puts("If you like, you can always open your wallet in PUBLIC key mode like this:")
-            with indent(2):
-                puts(colored.magenta('$ bwallet --wallet=%s' % mpub))
+    if wallet_obj.private_key is None:
+        print_pubwallet_notice(mpub=mpub)
+    else:
+        puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
+        puts("If you like, you can always open your wallet in PUBLIC key mode like this:")
+        puts('')
+        with indent(2):
+            puts(colored.magenta('$ bwallet --wallet=%s' % mpub))
+        puts('')
 
     if USER_ONLINE:
         wallet_name = get_blockcypher_walletname_from_mpub(
@@ -783,11 +838,8 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
         puts('What do you want to do?:')
         with indent(2):
             puts(colored.cyan('1: Show new receiving addresses'))
-            puts(colored.cyan('2: Show recent transactions'))
-            puts(colored.cyan('3: Send funds (generate transaction, sign, & broadcast)'))
-            puts(colored.cyan('4: Sweep funds into bwallet from a private key you hold'))
-            puts(colored.cyan('5: Generate transaction for offline signing'))
-            puts(colored.cyan('6: Broadcast transaction previously signed offline'))
+            puts(colored.cyan('2: Show balance and transactions'))
+            puts(colored.cyan('3: Send funds (more options here)'))
 
         if wallet_obj.private_key:
             with indent(2):
@@ -796,22 +848,22 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
             with indent(2):
                 puts(colored.cyan('0: Dump addresses (advanced users only)'))
 
-        choice = choice_prompt(user_prompt=DEFAULT_PROMPT,
-                acceptable_responses=range(0, 6+1))
+        choice = choice_prompt(
+                user_prompt=DEFAULT_PROMPT,
+                acceptable_responses=range(0, 3+1),
+                quit_ok=True,
+                )
         verbose_print('Choice: %s' % choice)
 
-        if choice == '1':
+        if choice in ('q', 'Q'):
+            puts(colored.green('Thanks for using bwallet!'))
+            break
+        elif choice == '1':
             display_new_receiving_addresses(wallet_obj=wallet_obj)
         elif choice == '2':
             display_recent_txs(wallet_obj=wallet_obj)
         elif choice == '3':
-            send_funds(wallet_obj=wallet_obj)
-        elif choice == '4':
-            sweep_funds_from_privkey(wallet_obj=wallet_obj)
-        elif choice == '5':
-            generate_offline_tx(wallet_obj=wallet_obj)
-        elif choice == '6':
-            broadcast_signed_tx(wallet_obj=wallet_obj)
+            send_chooser(wallet_obj=wallet_obj)
         elif choice == '0':
             if wallet_obj.private_key:
                 dump_private_keys(wallet_obj=wallet_obj)

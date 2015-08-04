@@ -4,11 +4,11 @@ from setuptools import setup
 
 setup(
         name='bwallet',
-        version='1.0.0',
+        version='1.0.1',
         py_modules=['bwallet'],
         install_requires=[
             'clint==0.4.1',
-            'blockcypher==1.0.14',
+            'blockcypher==1.0.15',
             'bitmerchant==0.1.6',
             ],
         entry_points='''
