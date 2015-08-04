@@ -17,7 +17,7 @@ setup(
             ],
         entry_points='''
             [console_scripts]
-            bwallet=bwallet:bwallet:invoke_cli
+            bwallet=bwallet:invoke_cli
         ''',
         packages=['bwallet'],
         )
