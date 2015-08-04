@@ -782,7 +782,7 @@ def send_chooser(wallet_obj):
 
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
-            acceptable_responses=range(0, 3+1),
+            acceptable_responses=range(0, 4+1),
             quit_ok=True,
             default_input='1',
             show_default=True,

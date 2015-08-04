@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
         name='bwallet',
-        version='1.0.3',
+        version='1.0.4',
         py_modules=['bwallet'],
         install_requires=[
             'clint==0.4.1',
