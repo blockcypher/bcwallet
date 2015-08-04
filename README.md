@@ -1,18 +1,23 @@
 bwallet is still under development and not ready for production use. You could very well lose money. Use at your own risk.
 
-To install (alpha, for developers only):
+pypi support to follow when bwallet is ready for primetime and will work as follows:
+```
+$ virtualenv --python=python2 venv  # see python2 note below 
+$ . venv/bin/activate
+$ pip install bwallet
+$ bwallet
+```
+Note: the virtualenv (first 2 steps) shouldn't be strictly necessary,
+but one of the dependency libraries requires a virtualenv to `pip install`.
+Once that's fixed I'll update this.
+
+To edit and submit a pull request:
 ```
 $ git clone https://github.com/blockcypher/bwallet.git
 $ cd bwallet
 $ virtualenv --python=python2 venv  # see python2 note below 
 $ . venv/bin/activate
 $ pip install --editable .
-$ bwallet
-```
-
-pypi support to follow when bwallet is ready for primetime and will work as follows:
-```
-$ pip install bwallet
 $ bwallet
 ```
 
