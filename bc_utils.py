@@ -175,10 +175,3 @@ def hexkeypair_list_to_dict(hexkeypair_list):
         hexkeypair.pop('pub_address')
         hexkeypair_dict[pub_address] = hexkeypair
     return hexkeypair_dict
-
-
-def print_without_rounding(btc):
-    if btc:
-        return '{0:.8f}'.format(btc)
-    else:
-        return '0'

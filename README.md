@@ -16,6 +16,6 @@ $ pip install bwallet
 $ bwallet
 ```
 
-While python3 is great, this app is designed to work with python2 and is not tested for python3. There are a few reasons why python 2 is better in this case:
-- The click library [strongly recommends python2 for command line apps](http://click.pocoo.org/4/python3/)
+While python3 is great, this app is designed to work with python2 only. There are a few reasons why python 2 is better in this case:
 - Most operating systems comes with python2 pre-installed, not python3.
+- Python3 unicode handling causes problems, [Armin Ronacher strongly recommends python2 for command line apps](http://click.pocoo.org/4/python3/)
