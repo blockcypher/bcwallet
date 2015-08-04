@@ -279,7 +279,10 @@ def send_funds(wallet_obj):
             num_addrs_to_return=1,
             )[0]['address']
 
-    tx_preference = txn_preference_chooser(default_input='1')
+    tx_preference = txn_preference_chooser(
+            user_prompt=DEFAULT_PROMPT,
+            default_input='1',
+            )
 
     verbose_print('Inputs:')
     verbose_print(inputs)

@@ -147,24 +147,24 @@ def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
 
 
 def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
-    puts('How quickly do you want this transaction to confirm? The higher the preference, the higher the transaction fee.')
+    puts('How quickly do you want this transaction to confirm? The higher the miner preference, the higher the transaction fee.')
     TXN_PREFERENCES = (
             ('high', '1-2 blocks to confirm'),
             ('medium', '3-6 blocks to confirm'),
             ('low', '7+ blocks to confirm'),
-            ('zero', 'no fee, may not ever confirm (advanced users only)'),
+            #('zero', 'no fee, may not ever confirm (advanced users only)'),
             )
     for cnt, pref_desc in enumerate(TXN_PREFERENCES):
         pref, desc = pref_desc
         with indent(2):
             puts(colored.cyan('%s (%s priority): %s' % (cnt+1, pref, desc)))
     choice_int = choice_prompt(
-            user_prompt=DEFAULT_PROMPT,
-            acceptable_responses=range(1, len(TXN_PREFERENCES)),
+            user_prompt=user_prompt,
+            acceptable_responses=range(1, len(TXN_PREFERENCES)+1),
             default_input=default_input,
             show_default=True,
             )
-    return TXN_PREFERENCES[int(choice_int)+1][0]
+    return TXN_PREFERENCES[int(choice_int)-1][0]
 
 
 def confirm(user_prompt=DEFAULT_PROMPT, default=False):
