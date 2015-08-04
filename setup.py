@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
         name='bwallet',
-        version='1.0.7',
+        version='1.0.8',
         description='Simple BIP32 HD cryptocurrecy command line wallet',
         author='Michael Flaxman',
         author_email='mflaxman+blockcypher@gmail.com',

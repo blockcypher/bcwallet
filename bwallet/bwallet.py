@@ -16,11 +16,11 @@ from blockcypher.utils import (satoshis_to_btc, get_blockcypher_walletname_from_
         coin_symbol_from_mkey)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
-from bc_utils import (guess_network_from_mkey,
+from .bc_utils import (guess_network_from_mkey,
         find_hexkeypairs_from_bip32key_bc, get_tx_url, hexkeypair_list_to_dict,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
-from cl_utils import (print_without_rounding, debug_print, choice_prompt,
+from .cl_utils import (print_without_rounding, debug_print, choice_prompt,
         get_crypto_address, get_wif_obj, get_int, confirm, get_user_entropy,
         coin_symbol_chooser, txn_preference_chooser, print_pubwallet_notice,
         DEFAULT_PROMPT)
