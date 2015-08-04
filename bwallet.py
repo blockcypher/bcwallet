@@ -1004,6 +1004,16 @@ def cli():
         puts('')
         with indent(4):
             puts(colored.magenta('$ echo %s | bwallet' % mpriv))
+        sys.exit()
+
+
+def invoke_cli():
+    try:
+        cli()
+    except KeyboardInterrupt:
+        puts('')
+        puts(colored.red('Aborted'))
+        sys.exit()
 
 
 if __name__ == '__main__':
@@ -1011,4 +1021,4 @@ if __name__ == '__main__':
     For (rare) invocation like this:
     python bwallet.py
     '''
-    cli()
+    invoke_cli()

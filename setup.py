@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
         name='bwallet',
-        version='1.0.4',
+        version='1.0.5',
         py_modules=['bwallet'],
         install_requires=[
             'clint==0.4.1',
@@ -13,6 +13,6 @@ setup(
             ],
         entry_points='''
             [console_scripts]
-            bwallet=bwallet:cli
+            bwallet=bwallet:invoke_cli
         '''
         )
