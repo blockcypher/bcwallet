@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+# Command line utilties and helper functions
+
 from clint.textui import puts, colored, indent
 from getpass import getpass
 
@@ -7,6 +9,10 @@ from blockcypher.utils import is_valid_address_for_coinsymbol
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS, COIN_SYMBOL_LIST
 
 from bitmerchant.wallet.keys import PrivateKey
+
+import json
+
+from datetime import datetime
 
 
 DEFAULT_PROMPT = '฿'
@@ -17,6 +23,21 @@ def print_without_rounding(btc):
         return '{0:.8f}'.format(btc)
     else:
         return '0'
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    # http://stackoverflow.com/a/27058505/1754586
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+
+        return json.JSONEncoder.default(self, o)
+
+
+def debug_print(to_print):
+    if type(to_print) is dict:
+        to_print = json.dumps(to_print, cls=DateTimeEncoder, indent=2)
+    puts(colored.yellow(str(to_print)))
 
 
 def choice_prompt(user_prompt=DEFAULT_PROMPT, acceptable_responses=[],

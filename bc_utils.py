@@ -7,7 +7,7 @@ from blockcypher.utils import (is_valid_coin_symbol, is_valid_hash,
         coin_symbol_from_mkey)
 
 
-# collection of helper methods
+# collection of blockchain/crypto utilities and helper methods
 
 COIN_SYMBOL_TO_BMERCHANT_NETWORK = {
         'btc': BitcoinMainNet,

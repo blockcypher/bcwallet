@@ -9,9 +9,9 @@ from clint.textui import puts, colored, indent
 from bitmerchant.wallet import Wallet
 
 from blockcypher import (create_hd_wallet, get_wallet_details,
-        create_unsigned_tx, get_input_addresses, make_tx_signatures,
-        broadcast_signed_transaction, get_blockchain_overview,
-        get_total_balance)
+        create_unsigned_tx, verify_unsigned_tx, get_input_addresses,
+        make_tx_signatures, broadcast_signed_transaction,
+        get_blockchain_overview, get_total_balance)
 from blockcypher.utils import (satoshis_to_btc, get_blockcypher_walletname_from_mpub,
         coin_symbol_from_mkey)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
@@ -20,13 +20,9 @@ from bc_utils import (guess_network_from_mkey,
         find_hexkeypairs_from_bip32key_bc, get_tx_url, hexkeypair_list_to_dict,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
-from cl_utils import (print_without_rounding, choice_prompt,
+from cl_utils import (print_without_rounding, debug_print, choice_prompt,
         get_crypto_address, get_wif_obj, get_int, confirm, get_user_entropy,
         coin_symbol_chooser, txn_preference_chooser, DEFAULT_PROMPT)
-
-from datetime import datetime
-
-import json
 
 
 # Globals that can be overwritten at startup
@@ -35,20 +31,9 @@ USER_ONLINE = False
 BLOCKCYPHER_API_KEY = ''
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    # http://stackoverflow.com/a/27058505/1754586
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-
-        return json.JSONEncoder.default(self, o)
-
-
 def verbose_print(to_print):
     if VERBOSE_MODE:
-        if type(to_print) is dict:
-            to_print = json.dumps(to_print, cls=DateTimeEncoder, indent=2)
-        puts(colored.yellow(str(to_print)))
+        debug_print(to_print)
 
 
 def get_public_wallet_url(mpub):
@@ -300,17 +285,32 @@ def send_funds(wallet_obj):
         change_address=change_address,
         preference=tx_preference,
         coin_symbol=coin_symbol,
-        verify_tosigntx=True,  # guarantees we are signing the right TX
+        # will verify in the next step,
+        # that way if there is an error here we can display that to user
+        verify_tosigntx=False,
         )
 
     verbose_print('Unsigned TX:')
     verbose_print(unsigned_tx)
 
     if 'errors' in unsigned_tx:
-        print('TX Error(s): Tx NOT Signed or Broadcast')
+        puts(colored.red('TX Error(s): Tx NOT Signed or Broadcast'))
         for error in unsigned_tx['errors']:
-            print(error['error'])
+            puts(colored.red(error['error']))
             return
+
+    # Verify TX requested to sign is as expected
+    tx_is_correct, err_msg = verify_unsigned_tx(
+            unsigned_tx=unsigned_tx,
+            inputs=inputs,
+            outputs=outputs,
+            sweep_funds=False,
+            change_address=change_address,
+            coin_symbol=coin_symbol,
+            )
+    if not tx_is_correct:
+        puts(colored.red('TX Error: Tx NOT Signed or Broadcast'))
+        puts(colored.red(err_msg))
 
     input_addresses = get_input_addresses(unsigned_tx)
     verbose_print('input_addresses')
@@ -425,16 +425,31 @@ def sweep_funds_from_privkey(wallet_obj):
         outputs=outputs,
         change_address=None,
         coin_symbol=coin_symbol,
-        verify_tosigntx=True,  # guarantees we are signing the right TX
+        # will verify in the next step,
+        # that way if there is an error here we can display that to user
+        verify_tosigntx=False,
         )
     verbose_print('Unsigned TX:')
     verbose_print(unsigned_tx)
 
     if 'errors' in unsigned_tx:
-        print('TX Error(s): Tx NOT Signed or Broadcast')
+        puts(colored.red('TX Error(s): Tx NOT Signed or Broadcast'))
         for error in unsigned_tx['errors']:
-            print(error['error'])
+            puts(colored.red(error['error']))
             return
+
+    # Verify TX requested to sign is as expected
+    tx_is_correct, err_msg = verify_unsigned_tx(
+            unsigned_tx=unsigned_tx,
+            inputs=inputs,
+            outputs=outputs,
+            sweep_funds=True,
+            change_address=None,
+            coin_symbol=coin_symbol,
+            )
+    if not tx_is_correct:
+        puts(colored.red('TX Error: Tx NOT Signed or Broadcast'))
+        puts(colored.red(err_msg))
 
     privkeyhex_list, pubkeyhex_list = [], []
     for _ in unsigned_tx['tx']['inputs']:
@@ -672,7 +687,7 @@ def dump_active_addresses(wallet_obj):
     puts('For Private Keys, please open bwallet with your Master Private Key:')
     puts('')
     with indent(2):
-        puts('$ bwallet --wallet=xpriv123...')
+        puts(colored.magenta('$ bwallet --wallet=xpriv123...'))
 
     mpub = wallet_obj.serialize_b58(private=False)
     coin_symbol = coin_symbol_from_mkey(mpub)
@@ -742,7 +757,7 @@ def wallet_home(wallet_obj, show_welcome_msg=True):
             puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
             puts("If you like, you can always open your wallet in PUBLIC key mode like this:")
             with indent(2):
-                puts('$ bwallet --wallet=%s' % mpub)
+                puts(colored.magenta('$ bwallet --wallet=%s' % mpub))
 
     if USER_ONLINE:
         wallet_name = get_blockcypher_walletname_from_mpub(
@@ -928,8 +943,12 @@ def cli():
         puts('bwallet will now quit. Open your new wallet anytime like this:')
         puts('')
         with indent(4):
-            puts('$ bwallet --wallet=%s' % mpriv)
+            puts(colored.magenta('$ bwallet --wallet=%s' % mpriv))
         puts('')
+        puts("You may also open your wallet like this (useful if you'd like to encrypt your master private key and/or don't want it in your bash history):")
+        puts('')
+        with indent(4):
+            puts(colored.magenta('$ echo %s | bwallet' % mpriv))
 
 
 if __name__ == '__main__':
