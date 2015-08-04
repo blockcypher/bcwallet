@@ -19,3 +19,7 @@ $ bwallet
 While python3 is great, this app is designed to work with python2 only. There are a few reasons why python 2 is better in this case:
 - Most operating systems comes with python2 pre-installed, not python3.
 - Python3 unicode handling causes problems, [Armin Ronacher strongly recommends python2 for command line apps](http://click.pocoo.org/4/python3/)
+
+This wallet is built using:
+- Steven Buss' very awesome [bitmerchant](https://github.com/sbuss) library for generating keys
+- Vitalik Buterin's [https://github.com/vbuterin/pybitcointools](pybitcointools) for ecdsa signatures and decoding raw bitcoin transactions
