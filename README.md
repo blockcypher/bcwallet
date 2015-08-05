@@ -1,18 +1,12 @@
 bwallet is still under development and not ready for production use. You could very well lose money. Use at your own risk.
 
-To get started (you may want to first `cd` to a folder where the
-virtualenv will be created):
+To get started:
 ```
-$ virtualenv --python=python2 venv  # see python2 note below 
-$ . venv/bin/activate
 $ pip install bwallet
 $ bwallet
 ```
-Note: the virtualenv (first 2 steps) shouldn't be strictly necessary,
-but one of the dependency libraries requires a virtualenv to `pip install`.
-Once that's fixed I'll update this.
 
-To edit and submit a pull request:
+If you'd like to edit bwallet (say to submit a pull request):
 ```
 $ git clone https://github.com/blockcypher/bwallet.git
 $ cd bwallet
@@ -28,4 +22,4 @@ While python3 is great, this app is designed to work with python2 only. There ar
 
 This wallet is built using:
 - Steven Buss' very awesome [bitmerchant](https://github.com/sbuss) library for generating keys
-- Vitalik Buterin's [https://github.com/vbuterin/pybitcointools](pybitcointools) for ecdsa signatures and decoding raw bitcoin transactions
+- Vitalik Buterin's [pybitcointools](https://bootstrap.pypa.io/get-pip.py) for ecdsa signatures and decoding raw bitcoin transactions
