@@ -167,7 +167,7 @@ def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
             ('high', '1-2 blocks to confirm'),
             ('medium', '3-6 blocks to confirm'),
             ('low', '7+ blocks to confirm'),
-            #('zero', 'no fee, may not ever confirm (advanced users only)'),
+            #  ('zero', 'no fee, may not ever confirm (advanced users only)'),
             )
     for cnt, pref_desc in enumerate(TXN_PREFERENCES):
         pref, desc = pref_desc
