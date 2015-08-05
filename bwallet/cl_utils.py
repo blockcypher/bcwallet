@@ -182,12 +182,16 @@ def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
     return TXN_PREFERENCES[int(choice_int)-1][0]
 
 
-def confirm(user_prompt=DEFAULT_PROMPT, default=False):
-    if default:
-        prompt_to_use = user_prompt + ' [Y/n]:'
-    else:
+def confirm(user_prompt=DEFAULT_PROMPT, default=None):
+    if default is True:
+        prompt_to_use = user_prompt + ' [Y/n]: '
+    elif default is False:
+        prompt_to_use = user_prompt + ' [y/N]: '
+    elif default is None:
         prompt_to_use = user_prompt + ': '
-    user_input = getpass(prompt_to_use).strip()
+    else:
+        raise Exception('Bad Default Value: %s' % default)
+    user_input = raw_input(prompt_to_use).strip()
     if not user_input:
         return default
     elif user_input.lower() == 'y':
@@ -195,7 +199,7 @@ def confirm(user_prompt=DEFAULT_PROMPT, default=False):
     elif user_input.lower() == 'n':
         return False
     else:
-        puts(colored.red('%s is not a valid entry. Please enter either Y or N.' % user_input))
+        puts(colored.red('`%s` is not a valid entry. Please enter either Y or N.' % user_input))
         return confirm(user_prompt=user_prompt, default=default)
 
 
