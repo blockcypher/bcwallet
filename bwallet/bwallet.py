@@ -66,7 +66,7 @@ def display_balance_info(wallet_obj, verbose=False):
             )
     verbose_print(wallet_details)
 
-    puts('-' * 50)
+    puts('-' * 70)
     puts('Total Received: %s' % wallet_details['total_received'])
     puts('Total Sent: %s' % wallet_details['total_sent'])
     puts('Balance: %s' % wallet_details['final_balance'])
@@ -168,7 +168,7 @@ def display_new_receiving_addresses(wallet_obj):
             num_addrs_to_return=5,
             )
 
-    puts('-' * 75)
+    puts('-' * 70)
     puts('Next 5 Unused %s Receiving Addresses (for people to send you funds):' %
             COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev']
             )
@@ -561,10 +561,11 @@ def dump_all_keys(wallet_obj):
     num_keys = get_int(
             user_prompt=DEFAULT_PROMPT,
             max_int=10**5,
-            default_input=5,
+            default_input='5',
+            show_default=True,
             )
 
-    puts('-'*50)
+    puts('-'*70)
     for chain_int in (0, 1):
         for current in range(0, num_keys):
             path = "m/%d/%d" % (chain_int, current)
@@ -634,8 +635,8 @@ def dump_private_keys(wallet_obj):
         choice = choice_prompt(
                 user_prompt=DEFAULT_PROMPT,
                 acceptable_responses=[1, 2],
-                default_input=1,
-                show_default=False,
+                default_input='1',
+                show_default=True,
                 )
         if choice == '1':
             return dump_all_keys(wallet_obj=wallet_obj)
@@ -657,10 +658,11 @@ def dump_all_addresses(wallet_obj):
     num_keys = get_int(
             max_int=10**5,
             user_prompt=DEFAULT_PROMPT,
-            default_input=5,
+            default_input='5',
+            show_default=True,
             )
 
-    puts('-'*50)
+    puts('-'*70)
     for chain_int in (0, 1):
         for current in range(0, num_keys):
             path = "m/%d/%d" % (chain_int, current)
@@ -762,8 +764,8 @@ def dump_addresses(wallet_obj):
         choice = choice_prompt(
                 user_prompt=DEFAULT_PROMPT,
                 acceptable_responses=[1, 2],
-                default_input=1,
-                show_default=False,
+                default_input='1',
+                show_default=True,
                 )
         if choice == '1':
             return dump_all_addresses(wallet_obj=wallet_obj)
@@ -837,7 +839,7 @@ def wallet_home(wallet_obj):
 
     # Go to home screen
     while True:
-        puts('-'*75)
+        puts('-'*70)
         puts('What do you want to do?:')
         with indent(2):
             puts(colored.cyan('1: Show new receiving addresses'))
@@ -945,7 +947,9 @@ def cli():
     except Exception as e:
         verbose_print(e)
 
+    puts('')
     puts(colored.green("Welcome to bwallet!"))
+    puts('')
 
     if wallet:
         network = guess_network_from_mkey(wallet)
@@ -969,14 +973,15 @@ def cli():
             puts(colored.red("Invalid wallet entry: %s" % wallet))
 
     else:
-        puts('')
-        puts("You've opened your wallet without specifying a master public or master private key. Let's generate a new master private key (locally) for you to use.")
+        puts("You've opened your wallet without specifying a master public or master private key, you can do that by piping it into bwallet or passing it through as a command line argument (--wallet=xpriv1233...).")
+        puts("Let's generate a new master private key (locally) for you to use.")
         puts('')
         puts('Which currency do you want to create a wallet for?')
         coin_symbol = coin_symbol_chooser()
         verbose_print(coin_symbol)
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
+        puts('')
         puts("Let's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency. Please bang on the keyboard for as long as you like and then hit enter. There's no reason to record this value, it cannot be used to recover your keys.")
         extra_entropy = get_user_entropy(user_prompt='฿ (optional)')
 
@@ -1000,10 +1005,11 @@ def cli():
         with indent(4):
             puts(colored.magenta('$ bwallet --wallet=%s' % mpriv))
         puts('')
-        puts("You may also open your wallet like this, which is useful if you'd like to encrypt your master private key and/or don't want it in your bash history (use `cat` instead of echo):")
+        puts("You may also open your wallet like this, which is useful if you'd like to encrypt your master private key and/or don't want it in your bash history (echo obviously won't help you there, you could `cat` it out of an unencrypted file, or use some fancier encryption):")
         puts('')
         with indent(4):
             puts(colored.magenta('$ echo %s | bwallet' % mpriv))
+        puts('')
         sys.exit()
 
 

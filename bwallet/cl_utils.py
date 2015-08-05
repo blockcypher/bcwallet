@@ -76,22 +76,35 @@ def get_user_entropy(user_prompt=DEFAULT_PROMPT):
     return getpass('%s: ' % user_prompt)
 
 
-def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None):
-    user_int = raw_input('%s: ' % user_prompt).strip()
-    if default_input and not user_int:
-        return default_input
+def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT,
+        default_input=None, show_default=False):
+    if default_input and show_default:
+        prompt_to_use = '%s [%s]: ' % (user_prompt, default_input)
+    else:
+        prompt_to_use = '%s: ' % user_prompt
+
+    user_input = raw_input(prompt_to_use).strip()
+    if default_input and not user_input:
+        return int(default_input)
+
     try:
-        int(user_int)
+        int(user_input)
     except ValueError:
-        puts(colored.red('%s is not an integer. Please try again.' % user_int))
-        return get_int(max_int=max_int)
-    if int(user_int) < min_int:
+        puts(colored.red('%s is not an integer. Please try again.' % user_input))
+        return get_int(
+                max_int=max_int,
+                min_int=min_int,
+                default_input=default_input,
+                show_default=show_default,
+                )
+    if int(user_input) < min_int:
         puts(colored.red('%s <  %s. Please try again.' % (
             user_int, min_int)))
         return get_int(
                 max_int=max_int,
                 min_int=min_int,
                 default_input=default_input,
+                show_default=show_default,
                 )
     if int(user_int) > max_int:
         puts(colored.red('%s >  %s. Please try again.' % (
@@ -100,6 +113,7 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None):
                 max_int=max_int,
                 min_int=min_int,
                 default_input=default_input,
+                show_default=show_default,
                 )
     return int(user_int)
 
