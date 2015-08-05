@@ -13,7 +13,7 @@ setup(
         install_requires=[
             'clint==0.4.1',
             'blockcypher==1.0.15',
-            'bitmerchant==0.1.6',
+            'bitmerchant==0.1.7',
             ],
         entry_points='''
             [console_scripts]
