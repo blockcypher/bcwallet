@@ -28,6 +28,8 @@ from .cl_utils import (format_without_rounding, format_with_k_separator,
         print_bwallet_basic_pub_opening,
         BWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
 
+import traceback
+
 
 # Globals that can be overwritten at startup
 VERBOSE_MODE = False
@@ -1090,7 +1092,6 @@ def cli():
         mpriv = user_wallet_obj.serialize_b58(private=True)
         mpub = user_wallet_obj.serialize_b58(private=False)
 
-        # Dump info to screen and exit
         puts(colored.green('\nYour master PRIVATE key is: %s (guard this CAREFULLY as it can be used to steal your funds)' % mpriv))
         puts(colored.green('Your master PUBLIC key is: %s\n' % mpub))
         puts('bwallet will now quit. Open your new wallet anytime like this:\n')
@@ -1101,12 +1102,19 @@ def cli():
 
 
 def invoke_cli():
+    if sys.version_info[0] != 2 or sys.version_info[1] != 7:
+        puts(colored.red('Sorry, this app must be run with python 2.7 :('))
+        puts(colored.red('Your version: %s' % sys.version))
     try:
         cli()
     except KeyboardInterrupt:
         puts(colored.red('\nAborted'))
         sys.exit()
-
+    except Exception as e:
+        puts(colored.red('\nBad Robot! Quitting on Unexpected Error:\n%s' % e))
+        puts('\nHere are the details to share with the developer for a bug report')
+        puts(colored.yellow(traceback.format_exc()))
+        sys.exit()
 
 if __name__ == '__main__':
     '''
