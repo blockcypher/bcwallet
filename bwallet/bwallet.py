@@ -20,11 +20,12 @@ from .bc_utils import (guess_network_from_mkey,
         find_hexkeypairs_from_bip32key_bc, get_tx_url, hexkeypair_list_to_dict,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
-from .cl_utils import (print_without_rounding, debug_print, choice_prompt,
-        get_crypto_address, get_wif_obj, get_int, confirm, get_user_entropy,
-        coin_symbol_chooser, txn_preference_chooser, first4mprv_from_mpub,
-        print_pubwallet_notice, print_bwallet_basic_priv_opening,
-        print_bwallet_piped_priv_opening, print_bwallet_basic_pub_opening,
+from .cl_utils import (format_without_rounding, format_with_k_separator,
+        debug_print, choice_prompt, get_crypto_address, get_wif_obj, get_int,
+        confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser,
+        first4mprv_from_mpub, print_pubwallet_notice,
+        print_bwallet_basic_priv_opening, print_bwallet_piped_priv_opening,
+        print_bwallet_basic_pub_opening,
         BWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
 
 
@@ -82,17 +83,17 @@ def display_balance_info(wallet_obj, verbose=False):
     currency_abbrev = COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev']
     puts('-' * 70 + '\n')
     puts(colored.green('Confirmed Received: %s satoshis (%s %s)' % (
-        wallet_details['total_received'],
+        format_with_k_separator(wallet_details['total_received']),
         satoshis_to_btc(wallet_details['total_received']),
         currency_abbrev,
         )))
     puts(colored.green('Confirmed Sent: %s satoshis (%s %s)' % (
-        wallet_details['total_sent'],
+        format_with_k_separator(wallet_details['total_sent']),
         satoshis_to_btc(wallet_details['total_sent']),
         currency_abbrev,
         )))
     puts(colored.green('Confirmed Balance: %s satoshis (%s %s)' % (
-        wallet_details['balance'],
+        format_with_k_separator(wallet_details['balance']),
         satoshis_to_btc(wallet_details['balance']),
         currency_abbrev,
         )))
@@ -241,8 +242,8 @@ def display_recent_txs(wallet_obj):
             tx_time = tx.get('confirmed')
         puts(colored.green('%s GMT: %s satoshis (%s %s) %s in TX hash %s' % (
             tx_time.strftime("%Y-%m-%d %H:%M"),
-            tx.get('value'),
-            print_without_rounding(satoshis_to_btc(tx.get('value', 0))),
+            format_with_k_separator(tx.get('value', 0)),
+            format_without_rounding(satoshis_to_btc(tx.get('value', 0))),
             COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
             'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
             tx.get('tx_hash'),
@@ -285,7 +286,7 @@ def send_funds(wallet_obj):
     destination_address = get_crypto_address(coin_symbol=coin_symbol)
 
     VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
-            wallet_details['final_balance'])
+            format_with_k_separator(wallet_details['final_balance']))
     puts(VALUE_PROMPT)
     dest_satoshis = get_int(
             max_int=wallet_details['final_balance'],
@@ -392,12 +393,12 @@ def send_funds(wallet_obj):
     # final confirmation before broadcast
 
     CONF_TEXT = 'Send %s satoshis (%s %s) to %s with a fee of %s satoshis (%s %s, or %s%% of the amount transacted)?' % (
-            dest_satoshis,
-            print_without_rounding(satoshis_to_btc(dest_satoshis)),
+            format_with_k_separator(dest_satoshis),
+            format_without_rounding(satoshis_to_btc(dest_satoshis)),
             COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
             destination_address,
             unsigned_tx['tx']['fees'],
-            print_without_rounding(satoshis_to_btc(unsigned_tx['tx']['fees'])),
+            format_without_rounding(satoshis_to_btc(unsigned_tx['tx']['fees'])),
             COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
             round(100.0 * unsigned_tx['tx']['fees'] / dest_satoshis, 4),
             )
@@ -591,8 +592,8 @@ def print_key_path_info(address, wif, path, coin_symbol, skip_nobalance=False):
                 path_display,
                 address,
                 wif,
-                addr_balance,
-                print_without_rounding(satoshis_to_btc(addr_balance)),
+                format_with_k_separator(addr_balance),
+                format_without_rounding(satoshis_to_btc(addr_balance)),
                 COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
                 )))
     else:
@@ -628,8 +629,8 @@ def print_address_path_info(address, path, coin_symbol, skip_nobalance=False):
                 puts(colored.green('%s (%s) - %s satoshis (%s %s)' % (
                     path_display,
                     address,
-                    addr_balance,
-                    print_without_rounding(satoshis_to_btc(addr_balance)),
+                    format_with_k_separator(addr_balance),
+                    format_without_rounding(satoshis_to_btc(addr_balance)),
                     COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
                     )))
         else:

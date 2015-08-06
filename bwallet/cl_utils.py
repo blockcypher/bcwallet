@@ -19,11 +19,15 @@ from datetime import datetime
 DEFAULT_PROMPT = '฿'
 
 
-def print_without_rounding(btc):
+def format_without_rounding(btc):
     if btc:
         return '{0:.8f}'.format(btc)
     else:
         return '0'
+
+
+def format_with_k_separator(satoshis):
+    return '{:,}'.format(satoshis)
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -89,7 +93,7 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT,
         return int(default_input)
 
     try:
-        user_int = int(user_input)
+        user_int = int(user_input.replace(',', ''))
     except ValueError:
         puts(colored.red('%s is not an integer. Please try again.' % user_input))
         return get_int(
