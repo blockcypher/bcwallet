@@ -151,10 +151,18 @@ def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
                 cnt+1,
                 COIN_SYMBOL_MAPPINGS[coin_symbol_choice]['display_name'],
                 )))
+    if ACTIVE_COIN_SYMBOL_LIST[4] == 'bcy':
+        default_input = 5
+        show_default = True
+    else:
+        default_input = None
+        show_default = False
     coin_symbol_int = get_int(
             min_int=1,
             user_prompt=user_prompt,
             max_int=len(ACTIVE_COIN_SYMBOL_LIST),
+            default_input=default_input,
+            show_default=show_default,
             )
 
     return ACTIVE_COIN_SYMBOL_LIST[coin_symbol_int-1]
@@ -208,12 +216,16 @@ def first4mprv_from_mpub(mpub):
     return COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
 
 
+def print_bwallet_basic_pub_opening(mpub):
+    with indent(2):
+        puts(colored.magenta('$ bwallet --wallet=%s\n' % mpub))
+
+
 def print_pubwallet_notice(mpub):
-    first4 = first4mprv_from_mpub(mpub=mpub)
     puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
     puts("To sign transactions, open your wallet in private key mode like this:\n")
-    with indent(2):
-        puts(colored.magenta('$ bwallet --wallet=%s....\n' % first4))
+    priv_to_display = first4mprv_from_mpub(mpub=mpub) + '...'
+    print_bwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
 
 def print_bwallet_basic_priv_opening(priv_to_display):
