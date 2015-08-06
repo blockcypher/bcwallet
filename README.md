@@ -1,4 +1,4 @@
-bwallet is still under development and not ready for production use. You could very well lose money. Use at your own risk.
+bwallet is still under development and not ready for production use. Use at your own risk.
 
 To get started:
 ```
@@ -21,5 +21,6 @@ While python3 is great, this app is designed to work with python2 only. There ar
 - Python3 unicode handling causes problems, [Armin Ronacher strongly recommends python2 for command line apps](http://click.pocoo.org/4/python3/)
 
 This wallet is built using:
+- BlockCypher's very powerful [bitcoin API](https://github.com/sbuss). It supports features that other APIs don't, and not only makes this wallet possible but massively reduces the amount of client-side code written.
 - Steven Buss' very awesome [bitmerchant](https://github.com/sbuss) library for generating keys
 - Vitalik Buterin's [pybitcointools](https://bootstrap.pypa.io/get-pip.py) for ecdsa signatures and decoding raw bitcoin transactions
