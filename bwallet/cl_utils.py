@@ -138,9 +138,8 @@ def get_wif_obj(network, user_prompt=DEFAULT_PROMPT):
     wif = raw_input('%s: ' % user_prompt).strip()
     try:
         return PrivateKey.from_wif(wif, network=network)
-    except Exception as e:
-        puts(colored.red(e))
-        puts(colored.red('Invalid WIF %s, Please Try Again' % wif))
+    except Exception:
+        puts(colored.red('Invalid WIF `%s`, Please Try Again' % wif))
         get_wif_obj(network=network, user_prompt=user_prompt)
 
 
@@ -152,10 +151,18 @@ def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
                 cnt+1,
                 COIN_SYMBOL_MAPPINGS[coin_symbol_choice]['display_name'],
                 )))
+    if ACTIVE_COIN_SYMBOL_LIST[4] == 'bcy':
+        default_input = 5
+        show_default = True
+    else:
+        default_input = None
+        show_default = False
     coin_symbol_int = get_int(
             min_int=1,
             user_prompt=user_prompt,
             max_int=len(ACTIVE_COIN_SYMBOL_LIST),
+            default_input=default_input,
+            show_default=show_default,
             )
 
     return ACTIVE_COIN_SYMBOL_LIST[coin_symbol_int-1]
@@ -167,7 +174,7 @@ def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
             ('high', '1-2 blocks to confirm'),
             ('medium', '3-6 blocks to confirm'),
             ('low', '7+ blocks to confirm'),
-            #('zero', 'no fee, may not ever confirm (advanced users only)'),
+            #  ('zero', 'no fee, may not ever confirm (advanced users only)'),
             )
     for cnt, pref_desc in enumerate(TXN_PREFERENCES):
         pref, desc = pref_desc
@@ -182,12 +189,16 @@ def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
     return TXN_PREFERENCES[int(choice_int)-1][0]
 
 
-def confirm(user_prompt=DEFAULT_PROMPT, default=False):
-    if default:
-        prompt_to_use = user_prompt + ' [Y/n]:'
-    else:
+def confirm(user_prompt=DEFAULT_PROMPT, default=None):
+    if default is True:
+        prompt_to_use = user_prompt + ' [Y/n]: '
+    elif default is False:
+        prompt_to_use = user_prompt + ' [y/N]: '
+    elif default is None:
         prompt_to_use = user_prompt + ': '
-    user_input = getpass(prompt_to_use).strip()
+    else:
+        raise Exception('Bad Default Value: %s' % default)
+    user_input = raw_input(prompt_to_use).strip()
     if not user_input:
         return default
     elif user_input.lower() == 'y':
@@ -195,17 +206,36 @@ def confirm(user_prompt=DEFAULT_PROMPT, default=False):
     elif user_input.lower() == 'n':
         return False
     else:
-        puts(colored.red('%s is not a valid entry. Please enter either Y or N.' % user_input))
+        puts(colored.red('`%s` is not a valid entry. Please enter either Y or N.' % user_input))
         return confirm(user_prompt=user_prompt, default=default)
 
 
-def print_pubwallet_notice(mpub):
-    coin_symbol = coin_symbol_from_mkey(mpub)
-    first4 = COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
-    puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
-    puts("To sign transactions, open your wallet in private key mode like this:")
-    puts('')
+# TODO: move to blockcypher python library
+def first4mprv_from_mpub(mpub):
+    coin_symbol = coin_symbol_from_mkey(mkey=mpub)
+    return COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
+
+
+def print_bwallet_basic_pub_opening(mpub):
     with indent(2):
-        to_print = '$ bwallet --wallet=%s....' % first4
-        puts(colored.magenta(to_print))
-    puts('')
+        puts(colored.magenta('$ bwallet --wallet=%s\n' % mpub))
+
+
+def print_pubwallet_notice(mpub):
+    puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
+    puts("To sign transactions, open your wallet in private key mode like this:\n")
+    priv_to_display = first4mprv_from_mpub(mpub=mpub) + '...'
+    print_bwallet_basic_priv_opening(priv_to_display=priv_to_display)
+
+
+def print_bwallet_basic_priv_opening(priv_to_display):
+    with indent(4):
+        puts(colored.magenta('$ bwallet --wallet=%s\n' % priv_to_display))
+
+
+BWALLET_PRIVPIPE_EXPLANATION = "If you'd like to encrypt your master private key and/or don't want it in your bash history you can pipe in your wallet like this:\n"
+
+
+def print_bwallet_piped_priv_opening(priv_to_display):
+    with indent(4):
+        puts(colored.magenta('$ echo %s | bwallet\n' % priv_to_display))
