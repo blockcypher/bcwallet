@@ -810,7 +810,9 @@ def dump_active_addresses(wallet_obj):
             depth=100,
             )
 
-    for hexkeypair_dict in hexkeypairs:
+    for cnt, hexkeypair_dict in enumerate(hexkeypairs):
+        if cnt == 0:
+            print_address_path_header()
         print_address_path_info(
                 address=hexkeypair_dict['pub_address'],
                 path=hexkeypair_dict['path'],
@@ -821,7 +823,9 @@ def dump_active_addresses(wallet_obj):
     found_addresses = [x['pub_address'] for x in hexkeypairs]
     notfound_addrs = set(used_addresses) - set(found_addresses)
 
-    for notfound_addr in notfound_addrs:
+    for cnt, notfound_addr in enumerate(notfound_addrs):
+        if cnt == 0:
+            print_address_path_header()
         print_address_path_info(
                 address=notfound_addr,
                 path=None,
