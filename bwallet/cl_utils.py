@@ -138,9 +138,8 @@ def get_wif_obj(network, user_prompt=DEFAULT_PROMPT):
     wif = raw_input('%s: ' % user_prompt).strip()
     try:
         return PrivateKey.from_wif(wif, network=network)
-    except Exception as e:
-        puts(colored.red(e))
-        puts(colored.red('Invalid WIF %s, Please Try Again' % wif))
+    except Exception:
+        puts(colored.red('Invalid WIF `%s`, Please Try Again' % wif))
         get_wif_obj(network=network, user_prompt=user_prompt)
 
 
@@ -203,13 +202,28 @@ def confirm(user_prompt=DEFAULT_PROMPT, default=None):
         return confirm(user_prompt=user_prompt, default=default)
 
 
+# TODO: move to blockcypher python library
+def first4mprv_from_mpub(mpub):
+    coin_symbol = coin_symbol_from_mkey(mkey=mpub)
+    return COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
+
+
 def print_pubwallet_notice(mpub):
-    coin_symbol = coin_symbol_from_mkey(mpub)
-    first4 = COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
+    first4 = first4mprv_from_mpub(mpub=mpub)
     puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
-    puts("To sign transactions, open your wallet in private key mode like this:")
-    puts('')
+    puts("To sign transactions, open your wallet in private key mode like this:\n")
     with indent(2):
-        to_print = '$ bwallet --wallet=%s....' % first4
-        puts(colored.magenta(to_print))
-    puts('')
+        puts(colored.magenta('$ bwallet --wallet=%s....\n' % first4))
+
+
+def print_bwallet_basic_priv_opening(priv_to_display):
+    with indent(4):
+        puts(colored.magenta('$ bwallet --wallet=%s\n' % priv_to_display))
+
+
+BWALLET_PRIVPIPE_EXPLANATION = "If you'd like to encrypt your master private key and/or don't want it in your bash history you can pipe in your wallet like this:\n"
+
+
+def print_bwallet_piped_priv_opening(priv_to_display):
+    with indent(4):
+        puts(colored.magenta('$ echo %s | bwallet\n' % priv_to_display))
