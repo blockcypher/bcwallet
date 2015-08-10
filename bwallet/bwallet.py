@@ -230,11 +230,12 @@ def display_recent_txs(wallet_obj):
     verbose_print(wallet_details)
 
     # TODO: pagination for lots of transactions
-    if not wallet_details.get('txrefs'):
+
+    txs = wallet_details.get('unconfirmed_txrefs', []) + wallet_details.get('txrefs', [])
+
+    if not txs:
         puts('No Transactions')
 
-    txs = wallet_details.get('unconfirmed_txrefs', []) \
-            + wallet_details.get('txrefs', [])
     for tx in txs:
         # Logic copied from block explorer
         # templates/address_overview.html
