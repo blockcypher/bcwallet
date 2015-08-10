@@ -131,7 +131,7 @@ def get_used_addresses(wallet_obj):
 
 
 def get_unused_addresses_on_subchain(wallet_obj, subchain_index,
-        num_addrs_to_return, used_addr_set=set()):
+        num_addrs_to_return=5, used_addr_set=set()):
     '''
     Traverse a subchain_index for unused addresses
 
@@ -139,6 +139,11 @@ def get_unused_addresses_on_subchain(wallet_obj, subchain_index,
         {'address': '1abc123...', 'path': 'm/0/9',}
     '''
     assert type(subchain_index) is int, subchain_index
+
+    verbose_print('get_unused_addresses_on_subchain called on subchain %s with the following used_addresses:%s\n' % (
+        subchain_index,
+        used_addr_set,
+        ))
 
     subchain_wallet = wallet_obj.get_child(subchain_index)  # m/subchain_index
 
