@@ -24,9 +24,9 @@ from .cl_utils import (format_without_rounding, format_with_k_separator,
         debug_print, choice_prompt, get_crypto_address, get_wif_obj, get_int,
         confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser,
         first4mprv_from_mpub, print_pubwallet_notice,
-        print_bwallet_basic_priv_opening, print_bwallet_piped_priv_opening,
-        print_bwallet_basic_pub_opening,
-        BWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
+        print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening,
+        print_bcwallet_basic_pub_opening,
+        BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
 
 import traceback
 
@@ -449,12 +449,12 @@ def generate_offline_tx(wallet_obj):
 def sign_tx_offline(wallet_obj):
 
     if wallet_obj.private_key is None:
-        puts(colored.red("bwallet was booted using a master PUBLIC key %s so it cannot sign transactions. Please load bwallet with your master PRIVATE key like this:"))
+        puts(colored.red("bcwallet was booted using a master PUBLIC key %s so it cannot sign transactions. Please load bcwallet with your master PRIVATE key like this:"))
         priv_to_display = '%s123...' % first4mprv_from_mpub(
                 mpub=wallet_obj.serialize_b58(private=False))
-        print_bwallet_basic_priv_opening(priv_to_display=priv_to_display)
-        puts(BWALLET_PRIVPIPE_EXPLANATION)
-        print_bwallet_piped_priv_opening(priv_to_display=priv_to_display)
+        print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
+        puts(BCWALLET_PRIVPIPE_EXPLANATION)
+        print_bcwallet_piped_priv_opening(priv_to_display=priv_to_display)
         return
 
     else:
@@ -800,10 +800,10 @@ def dump_active_addresses(wallet_obj):
     mpub = wallet_obj.serialize_b58(private=False)
 
     puts('Displaying Public Addresses Only')
-    puts('For Private Keys, please open bwallet with your Master Private Key:\n')
+    puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
 
     priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
-    print_bwallet_basic_priv_opening(priv_to_display=priv_to_display)
+    print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
     coin_symbol = coin_symbol_from_mkey(mpub)
     used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
@@ -871,7 +871,7 @@ def send_chooser(wallet_obj):
         puts("(since you are NOT connected to BlockCypher, many choices will not work)")
     with indent(2):
         puts(colored.cyan('1: Basic send (generate transaction, sign, & broadcast)'))
-        puts(colored.cyan('2: Sweep funds into bwallet from a private key you hold'))
+        puts(colored.cyan('2: Sweep funds into bcwallet from a private key you hold'))
         puts(colored.cyan('3: Generate transaction for offline signing'))
         puts(colored.cyan('4: Sign transaction offline'))
         puts(colored.cyan('5: Broadcast transaction previously signed offline'))
@@ -910,7 +910,7 @@ def wallet_home(wallet_obj):
     else:
         puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
         puts("If you like, you can always open your wallet in PUBLIC key mode like this:\n")
-        print_bwallet_basic_pub_opening(mpub=mpub)
+        print_bcwallet_basic_pub_opening(mpub=mpub)
 
     coin_symbol = coin_symbol_from_mkey(mpub)
     if USER_ONLINE:
@@ -969,7 +969,7 @@ def wallet_home(wallet_obj):
         verbose_print('Choice: %s' % choice)
 
         if choice in ('q', 'Q'):
-            puts(colored.green('Thanks for using bwallet!'))
+            puts(colored.green('Thanks for using bcwallet!'))
             break
         elif choice == '1':
             display_new_receiving_addresses(wallet_obj=wallet_obj)
@@ -1007,7 +1007,7 @@ def cli():
             )
     parser.add_argument('-b', '--bc-api-key',
             dest='bc_api_key',
-            # For all bwallet users:
+            # For all bcwallet users:
             default='9c339f92713518492a4504c273d1d9f9',
             help='BlockCypher API Key to use. If not supplied the default will be used.',
             )
@@ -1026,7 +1026,7 @@ def cli():
 
     if args.version:
         import pkg_resources
-        puts(colored.green(str(pkg_resources.get_distribution("bwallet"))))
+        puts(colored.green(str(pkg_resources.get_distribution("bcwallet"))))
         sys.exit()
 
     if sys.stdin.isatty():
@@ -1052,7 +1052,7 @@ def cli():
     if is_connected_to_blockcypher():
         USER_ONLINE = True
 
-    puts(colored.green("\nWelcome to bwallet!\n"))
+    puts(colored.green("\nWelcome to bcwallet!\n"))
 
     if wallet:
         network = guess_network_from_mkey(wallet)
@@ -1077,7 +1077,7 @@ def cli():
 
     else:
         puts("You've opened your wallet without specifying a master public or master private key, which you can do like this:\n")
-        print_bwallet_basic_priv_opening(priv_to_display='xpriv123...')
+        print_bcwallet_basic_priv_opening(priv_to_display='xpriv123...')
         puts("Let's generate a new master private key (locally) for you to use.\n")
         puts('Which currency do you want to create a wallet for?')
         coin_symbol = coin_symbol_chooser(user_prompt=DEFAULT_PROMPT)
@@ -1100,10 +1100,10 @@ def cli():
 
         puts(colored.green('\nYour master PRIVATE key is: %s (guard this CAREFULLY as it can be used to steal your funds)' % mpriv))
         puts(colored.green('Your master PUBLIC key is: %s\n' % mpub))
-        puts('bwallet will now quit. Open your new wallet anytime like this:\n')
-        print_bwallet_basic_priv_opening(priv_to_display=mpriv)
-        puts(BWALLET_PRIVPIPE_EXPLANATION)
-        print_bwallet_piped_priv_opening(priv_to_display=mpriv)
+        puts('bcwallet will now quit. Open your new wallet anytime like this:\n')
+        print_bcwallet_basic_priv_opening(priv_to_display=mpriv)
+        puts(BCWALLET_PRIVPIPE_EXPLANATION)
+        print_bcwallet_piped_priv_opening(priv_to_display=mpriv)
         sys.exit()
 
 
@@ -1125,6 +1125,6 @@ def invoke_cli():
 if __name__ == '__main__':
     '''
     For (rare) invocation like this:
-    python bwallet.py
+    python bcwallet.py
     '''
     invoke_cli()

@@ -220,26 +220,26 @@ def first4mprv_from_mpub(mpub):
     return COIN_SYMBOL_MAPPINGS[coin_symbol]['first4_mprv']
 
 
-def print_bwallet_basic_pub_opening(mpub):
+def print_bcwallet_basic_pub_opening(mpub):
     with indent(2):
-        puts(colored.magenta('$ bwallet --wallet=%s\n' % mpub))
+        puts(colored.magenta('$ bcwallet --wallet=%s\n' % mpub))
 
 
 def print_pubwallet_notice(mpub):
     puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
     puts("To sign transactions, open your wallet in private key mode like this:\n")
     priv_to_display = first4mprv_from_mpub(mpub=mpub) + '...'
-    print_bwallet_basic_priv_opening(priv_to_display=priv_to_display)
+    print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
 
-def print_bwallet_basic_priv_opening(priv_to_display):
+def print_bcwallet_basic_priv_opening(priv_to_display):
     with indent(4):
-        puts(colored.magenta('$ bwallet --wallet=%s\n' % priv_to_display))
+        puts(colored.magenta('$ bcwallet --wallet=%s\n' % priv_to_display))
 
 
-BWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your wallet (perhaps to hide it from your bash history and/or encrypt your master private key):\n"
+BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your wallet (perhaps to hide it from your bash history and/or encrypt your master private key):\n"
 
 
-def print_bwallet_piped_priv_opening(priv_to_display):
+def print_bcwallet_piped_priv_opening(priv_to_display):
     with indent(4):
-        puts(colored.magenta('$ echo %s | bwallet\n' % priv_to_display))
+        puts(colored.magenta('$ echo %s | bcwallet\n' % priv_to_display))

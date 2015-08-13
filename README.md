@@ -1,19 +1,20 @@
-bwallet is still under development and not ready for production use. Use at your own risk.
+bcwallet is still under development and not ready for production use. Use at your own risk.
 
 To get started:
+PIP INSTALATTION TEMPORARILY DISABLED, WILL BE BACK SOON
 ```
-$ pip install bwallet
-$ bwallet
+$ pip install bcwallet
+$ bcwallet
 ```
 
-If you'd like to edit bwallet (say to submit a pull request):
+If you'd like to edit bcwallet (say to submit a pull request):
 ```
-$ git clone https://github.com/blockcypher/bwallet.git
-$ cd bwallet
+$ git clone https://github.com/blockcypher/bcwallet.git
+$ cd bcwallet
 $ virtualenv --python=python2 venv  # see python2 note below 
 $ . venv/bin/activate
 $ pip install --editable .
-$ bwallet
+$ bcwallet
 ```
 
 While python3 is great, this app is designed to work with python2 only. There are a few reasons why python 2 is better in this case:

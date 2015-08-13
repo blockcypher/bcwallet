@@ -3,21 +3,21 @@
 from setuptools import setup
 
 setup(
-        name='bwallet',
-        version='1.0.17',
+        name='bcwallet',
+        version='1.1.0',
         description='Simple BIP32 HD cryptocurrecy command line wallet',
         author='Michael Flaxman',
         author_email='mflaxman+blockcypher@gmail.com',
-        url='https://github.com/blockcypher/bwallet/',
-        py_modules=['bwallet'],
+        url='https://github.com/blockcypher/bcwallet/',
+        py_modules=['bcwallet'],
         install_requires=[
             'clint==0.4.1',
-            'blockcypher==1.0.16',
+            'blockcypher==1.0.18',
             'bitmerchant==0.1.7',
             ],
         entry_points='''
             [console_scripts]
-            bwallet=bwallet:invoke_cli
+            bcwallet=bcwallet:invoke_cli
         ''',
-        packages=['bwallet'],
+        packages=['bcwallet'],
         )

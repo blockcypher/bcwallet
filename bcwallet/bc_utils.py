@@ -113,7 +113,7 @@ def find_hexkeypairs_from_bip32key_linear(pub_address_list, master_key,
     for a matching key.
 
     So it would go through m/0, m/1, m/2, m/3, etc.
-    This path is not used in bwallet.
+    This path is not used in bcwallet.
 
     `pub_address_list` looks like this for BTC: ['1abc123...', '1def456...']
     `master_key` looks like this for BTC: xpriv123abc (or xpub123abc)
