@@ -237,7 +237,7 @@ def print_bwallet_basic_priv_opening(priv_to_display):
         puts(colored.magenta('$ bwallet --wallet=%s\n' % priv_to_display))
 
 
-BWALLET_PRIVPIPE_EXPLANATION = "If you'd like to encrypt your master private key and/or don't want it in your bash history you can pipe in your wallet like this:\n"
+BWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your wallet (perhaps to hide it from your bash history and/or encrypt your master private key):\n"
 
 
 def print_bwallet_piped_priv_opening(priv_to_display):
