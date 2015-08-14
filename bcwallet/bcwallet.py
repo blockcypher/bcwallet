@@ -1078,6 +1078,7 @@ def cli():
     else:
         puts("You've opened your wallet without specifying a master public or master private key, which you can do like this:\n")
         print_bcwallet_basic_priv_opening(priv_to_display='xpriv123...')
+
         puts("Let's generate a new master private key (locally) for you to use.\n")
         puts('Which currency do you want to create a wallet for?')
         coin_symbol = coin_symbol_chooser(user_prompt=DEFAULT_PROMPT)
