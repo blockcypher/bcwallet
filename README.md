@@ -35,17 +35,17 @@ All of these problems are solved with HD wallets. Just backup your master privat
 
 HD wallets are essential, and you really shouldn't use any wallet that isn't HD (<cough>blockchain.info</cough>). 
 
-**Q: Does blockcypher ever see my private keys?**
+**Q: Does BlockCypher ever see my private keys?**
 
-A: No! We never see your private keys. Keys are generated locally, and transactions are signed locally as well. Once you sign a transaction locally, by definition it cannot be edited and does not reveal your private key. When you send that to blockcypher, blockcypher relays it to the rest of the network quickly using its extremely well-connected nodes.
+A: No! We never see your private keys. Keys are generated locally, and transactions are signed locally as well. Once you sign a transaction locally, by definition it cannot be edited and does not reveal your private key. When you send that to BlockCypher, BlockCypher relays it to the rest of the network quickly using its extremely well-connected nodes.
 
 
 **Q: What bad things could happen if I use this wallet?**
 
-A: While blockcypher can't steal your funds, every wallet has a security/convenience tradeoff. Here are bcwallet's:
-- Blockcypher has your extended public key and can easily use that to figure out which addresses you control, which is bad for your privacy. We don't ask for a name or email address to use the wallet, but unless you're connected to the internet using Tor we could see your IP address.
-- Blockcypher could suffer from downtime, which would make bcwallet fairly worthless: you wouldn't be able to fetch your balance, transaction history, unspent transaction outputs, or broadcast transactions. However, you can always dump your private keys and addresses (using option 0 on the home screen) to spend your funds with *any* bitcoin wallet. If a wallet supported importing a master private key (hopefully more will in the future), you could just import that one string.
-- Blockcypher could trick you into paying a large transaction fee (to whatever miner mined your transaction, not to blockcypher). Since bcwallet relies on blockcypher to fetch how much bitcoin each address controls (the UTXOs), if blockcypher were to under-report it could cause bcwallet to mis-calculate the transaction fee. Blockcypher has no incentive to do this of course, and was built to solve this very problem.
+A: While BlockCypher can't steal your funds, every wallet has a security/convenience tradeoff. Here are bcwallet's:
+- BlockCypher has your extended public key and can easily use that to figure out which addresses you control, which is bad for your privacy. We don't ask for a name or email address to use the wallet, but unless you're connected to the internet using Tor we could see your IP address.
+- BlockCypher could suffer from downtime, which would make bcwallet fairly worthless: you wouldn't be able to fetch your balance, transaction history, unspent transaction outputs, or broadcast transactions. However, you can always dump your private keys and addresses (using option 0 on the home screen) to spend your funds with *any* bitcoin wallet. If a wallet supported importing a master private key (hopefully more will in the future), you could just import that one string.
+- BlockCypher could trick you into paying a large transaction fee (to whatever miner mined your transaction, not to BlockCypher). Since bcwallet relies on BlockCypher to fetch how much bitcoin each address controls (the UTXOs), if BlockCypher were to under-report it could cause bcwallet to mis-calculate the transaction fee. BlockCypher has no incentive to do this of course, and was built to solve this very problem.
 
 **Q: What path for key derivation do you use? BIP32 default wallet layout? BIP39? BIP44?**
 
