@@ -19,10 +19,10 @@ If `pip` doesn't work you can use `easy_install`, but [you really shouldn't do t
 **Q: There are a hundred wallets out there, what makes bcwallet unique?**
 
 A: bcwallet is:
-- Concise and easy to audit. Does not use the file system.
-- Hard to mess up. As long as you don't give away or lose your master private key, everything else is simple. Guard your master private key however you like.
-- Nearly trustless. See below for details.
-- Powerful. Supports offline transaction signing, multiple crypto-currencies, automatically adjusts transaction fees for current market conditions, allows user to specify number of blocks until a transaction will (likely) confirm, adds user entropy on key generation in case of a compromised CSPRNG, and more.
+- *Concise and easy to audit*. Does not use the file system.
+- *Hard to mess up*. As long as you don't give away or lose your master private key, everything else is simple. Guard your master private key however you like.
+- *Trustless*. See below for specific details.
+- *Powerful*. Supports offline transaction signing, multiple crypto-currencies, automatically adjusting transaction fees (for current market conditions), allows user to specify number of blocks until a transaction will (likely) confirm, adds user entropy on key generation in case of a compromised CSPRNG, and more.
 
 
 **Q: Why is an HD wallet important?**
@@ -57,7 +57,6 @@ A: We use a simple derivation with m/0/k for the external chain (receiving addre
 A: python3 is great, but but there are a few reasons why python 2 is better for this case:
 - Most operating systems comes with python2 pre-installed, not python3.
 - Python3 unicode handling causes problems, [Armin Ronacher strongly recommends python2 for command line apps](http://click.pocoo.org/4/python3/)
-- 
 
 **Q: Can I submit a pull request to bcwallet?**
 
