@@ -14,7 +14,7 @@ $ bcwallet
 
 # FAQs
 
-*Q: There are a hundred wallets out there, what makes bcwallet unique?*
+**Q: There are a hundred wallets out there, what makes bcwallet unique?**
 
 A: bcwallet is:
 - Concise and easy to audit. Does not use the file system.
