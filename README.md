@@ -19,7 +19,7 @@ If `pip` doesn't work you can use `easy_install`, but [you really shouldn't do t
 **Q: There are a hundred wallets out there, what makes bcwallet unique?**
 
 A: bcwallet is:
-- *Concise and easy to audit*. This whole library is < 2k LoC, and much of that is user interface/display. It does use [a few larger libraries](https://github.com/blockcypher/bcwallet/blob/master/setup.py), though
+- *Concise and easy to audit*. This whole library is < 2k LoC, and much of that is user interface/display. It does use [a few larger libraries](https://github.com/blockcypher/bcwallet/blob/master/setup.py#L13-L17), though
 - *Does not use the file system*. No need to worry about where/how it stores your keys. You pipe that in on bootup. Feel free to physically remove your hard drive and run bcwallet on (a live OS)[https://tails.boum.org/] if you like.
 - *Hard to mess up*. As long as you don't give away or lose your master private key, everything else is simple. Guard your master private key however you like.
 - *Trustless*. See below for specific details.
