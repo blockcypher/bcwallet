@@ -15,7 +15,6 @@ $ bcwallet
 # FAQs
 
 **Q: There are a hundred wallets out there, what makes bcwallet unique?**
-
 A: bcwallet is:
 - Concise and easy to audit. Does not use the file system.
 - Hard to mess up. As long as you don't give away or lose your master private key, everything else is simple. Guard your master private key however you like.
@@ -23,8 +22,7 @@ A: bcwallet is:
 - Powerful. Supports offline transaction signing, multiple crypto-currencies, automatically adjusts transaction fees for current market conditions, allows user to specify number of blocks until a transaction will (likely) confirm, adds user entropy on key generation in case of a compromised CSPRNG, and more.
 
 
-Q: Why is an HD wallet important?
-
+**Q: Why is an HD wallet important?**
 A: The best practice in bitcoin is to [use a new address for every transaction](https://bitcoin.org/en/protect-your-privacy) (including the change address your wallet when you send funds). This is for both personal/network privacy as well as clarity in determining who has paid you.
 
 Addresses correspond to private keys and are free to create, but the private key used to create an address must be saved or those funds are lost forever. This creates a serious and difficult key management problem, as each transaction means you have to store a new key. If you backup your keypool today and then do a bunch of transactions tomorrow (which your wallet generates new keys for), those new keys will not be included in your original backup. You could have a diligent backup and still lose funds!
