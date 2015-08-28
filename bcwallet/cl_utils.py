@@ -80,8 +80,8 @@ def get_user_entropy(user_prompt=DEFAULT_PROMPT):
     return getpass('%s: ' % user_prompt)
 
 
-def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT,
-        default_input=None, show_default=False):
+def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
+        show_default=False, quit_ok=False):
     if default_input and show_default:
         prompt_to_use = '%s [%s]: ' % (user_prompt, default_input)
     else:
@@ -91,6 +91,9 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT,
 
     if default_input and not user_input:
         return int(default_input)
+
+    if quit_ok and user_input in ['q', 'Q']:
+        return user_input
 
     try:
         user_int = int(user_input.replace(',', ''))

@@ -105,7 +105,7 @@ def display_balance_info(wallet_obj, verbose=False):
         tx_string += ' (+%s Unconfirmed)' % wallet_details['unconfirmed_n_tx']
     puts(colored.green(tx_string))
 
-    puts(colored.blue('More info: %s\n' % get_public_wallet_url(mpub)))
+    puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
 
     return wallet_details['final_balance']
 
@@ -246,7 +246,11 @@ def display_new_receiving_addresses(wallet_obj):
             max_int=5,
             default_input='1',
             show_default=True,
+            quit_ok=True,
             )
+
+    if num_addrs in ('q', 'Q'):
+        return
 
     verbose_print('num_addrs:\n%s' % num_addrs)
 
@@ -702,16 +706,16 @@ def dump_all_keys_or_addrs(wallet_obj):
     '''
 
     mpub = wallet_obj.serialize_b58(private=False)
-    if wallet_obj.private_key is None:
-        puts('Displaying Public Addresses Only')
-        puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
-        priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
-        print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
     if wallet_obj.private_key:
         puts('How many private keys (on each chain) do you want to dump?')
     else:
+        puts('Displaying Public Addresses Only')
+        puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
+        priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
+        print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
         puts('How many addresses (on each chain) do you want to dump?')
+
     num_keys = get_int(
             user_prompt=DEFAULT_PROMPT,
             max_int=10**5,
@@ -743,6 +747,8 @@ def dump_all_keys_or_addrs(wallet_obj):
                     )
 
     puts(colored.blue('You can compare this output to bip32.org'))
+
+    puts("\nNOTE: There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them. By default, BlockCypher will look 10 addresses ahead of the latest transaction or registered address on each subchain. For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15. For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's important to consider. This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
 
 
 def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
@@ -814,7 +820,15 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
                 acceptable_responses=[1, 2, 3, 4],
                 default_input='1',
                 show_default=True,
+                quit_ok=True,
                 )
+
+        if choice in ('q', 'Q'):
+            return
+
+        if wallet_obj.private_key:
+            puts("\nNOTE: Do not reveal your private keys to anyone! One quirk of HD wallets is that if an attacker learns any of your non-hardened child private keys as well as your master public key then the attacker can derive all of your private keys and steal all of your funds.\n")
+
         if choice == '1':
             return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
         elif choice == '2':
