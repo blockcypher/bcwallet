@@ -147,7 +147,7 @@ def get_wif_obj(network, user_prompt=DEFAULT_PROMPT):
         return PrivateKey.from_wif(wif, network=network)
     except Exception:
         puts(colored.red('Invalid WIF `%s`, Please Try Again' % wif))
-        get_wif_obj(network=network, user_prompt=user_prompt)
+        return get_wif_obj(network=network, user_prompt=user_prompt)
 
 
 def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
