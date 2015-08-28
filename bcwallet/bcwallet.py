@@ -337,7 +337,7 @@ def display_recent_txs(wallet_obj):
             )))
 
 
-def send_funds(wallet_obj):
+def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
     if not USER_ONLINE:
         puts(colored.red('Blockcypher connection needed to fetch unspents and broadcast signed transaction.'))
         puts(colored.red('You may dump all your addresses and private keys while offline by selecting option 0 on the home screen.'))
@@ -363,22 +363,25 @@ def send_funds(wallet_obj):
     verbose_print(wallet_details)
 
     if wallet_details['final_balance'] == 0:
-        puts(colored.red("0 balance. You can't send funds if you don't have them!"))
+        puts(colored.red("0 balance. You can't send funds if you don't have them available!"))
         return
 
     mpriv = wallet_obj.serialize_b58(private=True)
 
-    display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
-    puts('What %s address do you want to send to?' % display_shortname)
-    destination_address = get_crypto_address(coin_symbol=coin_symbol)
+    if not destination_address:
+        display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
+        puts('What %s address do you want to send to?' % display_shortname)
+        destination_address = get_crypto_address(coin_symbol=coin_symbol)
 
-    VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
-            format_with_k_separator(wallet_details['final_balance']))
-    puts(VALUE_PROMPT)
-    dest_satoshis = get_int(
-            max_int=wallet_details['final_balance'],
-            user_prompt=DEFAULT_PROMPT,
-            )
+    if not dest_satoshis:
+
+        VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
+                format_with_k_separator(wallet_details['final_balance']))
+        puts(VALUE_PROMPT)
+        dest_satoshis = get_int(
+                max_int=wallet_details['final_balance'],
+                user_prompt=DEFAULT_PROMPT,
+                )
 
     inputs = [{
             'wallet_name': wallet_name,
@@ -389,10 +392,15 @@ def send_funds(wallet_obj):
             'address': destination_address,
             }, ]
 
-    change_address = get_unused_change_addresses(
-            wallet_obj=wallet_obj,
-            num_addrs=1,
-            )[0]['pub_address']
+    if dest_satoshis == -1:
+        sweep_funds = True
+        change_address = None
+    else:
+        sweep_funds = False
+        change_address = get_unused_change_addresses(
+                wallet_obj=wallet_obj,
+                num_addrs=1,
+                )[0]['pub_address']
 
     tx_preference = txn_preference_chooser(
             user_prompt=DEFAULT_PROMPT,
@@ -423,18 +431,35 @@ def send_funds(wallet_obj):
     verbose_print(unsigned_tx)
 
     if 'errors' in unsigned_tx:
-        puts(colored.red('TX Error(s): Tx NOT Signed or Broadcast'))
-        for error in unsigned_tx['errors']:
-            puts(colored.red(error['error']))
-        # Abandon
-        return
+        if any([x.get('error', '').startswith('Not enough funds after fees') for x in unsigned_tx['errors']]):
+            puts('Not (quite) enough funds after fees to send %s satoshis (%s %s). Would you like to send the max you can instead?' % (
+                format_with_k_separator(dest_satoshis),
+                format_without_rounding(satoshis_to_btc(dest_satoshis)),
+                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+                ))
+            if confirm(user_prompt=DEFAULT_PROMPT, default=False):
+                return send_funds(
+                        wallet_obj=wallet_obj,
+                        destination_address=destination_address,
+                        dest_satoshis=-1,  # sweep
+                        )
+            else:
+                puts(colored.red('Transaction Not Broadcast!'))
+                return
+
+        else:
+            puts(colored.red('TX Error(s): Tx NOT Signed or Broadcast'))
+            for error in unsigned_tx['errors']:
+                puts(colored.red(error['error']))
+            # Abandon
+            return
 
     # Verify TX requested to sign is as expected
     tx_is_correct, err_msg = verify_unsigned_tx(
             unsigned_tx=unsigned_tx,
             inputs=inputs,
             outputs=outputs,
-            sweep_funds=False,
+            sweep_funds=sweep_funds,
             change_address=change_address,
             coin_symbol=coin_symbol,
             )
@@ -458,7 +483,7 @@ def send_funds(wallet_obj):
     verbose_print(hexkeypair_list)
     hexkeypair_dict = hexkeypair_list_to_dict(hexkeypair_list)
 
-    if len(hexkeypair_dict.keys()) != len(input_addresses):
+    if len(hexkeypair_dict.keys()) != len(set(input_addresses)):
         notfound_addrs = set(input_addresses) - set(hexkeypair_dict.keys())
         err_msg = "Couldn't find %s traversing bip32 key" % notfound_addrs
         raise Exception('Traversal Fail: %s' % err_msg)
@@ -479,15 +504,21 @@ def send_funds(wallet_obj):
 
     # final confirmation before broadcast
 
-    CONF_TEXT = 'Send %s satoshis (%s %s) to %s with a fee of %s satoshis (%s %s, or %s%% of the amount transacted)?' % (
-            format_with_k_separator(dest_satoshis),
-            format_without_rounding(satoshis_to_btc(dest_satoshis)),
+    if dest_satoshis == -1:
+        # remember that sweep TXs cannot verify amounts client-side (only destination addresses)
+        dest_satoshis_to_display = unsigned_tx['tx']['total'] - unsigned_tx['tx']['fees']
+    else:
+        dest_satoshis_to_display = dest_satoshis
+
+    CONF_TEXT = "Send %s satoshis (%s %s) to %s with a fee of %s satoshis (%s %s), which is %s%% of the amount you're sending?" % (
+            format_with_k_separator(dest_satoshis_to_display),
+            format_without_rounding(satoshis_to_btc(dest_satoshis_to_display)),
             COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
             destination_address,
-            unsigned_tx['tx']['fees'],
+            format_with_k_separator(unsigned_tx['tx']['fees']),
             format_without_rounding(satoshis_to_btc(unsigned_tx['tx']['fees'])),
             COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
-            round(100.0 * unsigned_tx['tx']['fees'] / dest_satoshis, 4),
+            round(100.0 * unsigned_tx['tx']['fees'] / dest_satoshis_to_display, 4),
             )
     puts(CONF_TEXT)
 
@@ -564,7 +595,7 @@ def sweep_funds_from_privkey(wallet_obj):
     coin_symbol = str(coin_symbol_from_mkey(mpub))
     network = guess_network_from_mkey(mpub)
 
-    puts('Enter a private key (in WIF format) to send from?')
+    puts('Enter a private key (in WIF format) to send from:')
     wif_obj = get_wif_obj(network=network, user_prompt=DEFAULT_PROMPT)
 
     pkey_addr = wif_obj.get_public_key().to_address(compressed=True)
@@ -814,7 +845,7 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
             puts(colored.cyan(' 1: All (works offline) - regardless of whether they have funds to spend'))
             puts(colored.cyan(' 2: Active - have funds to spend'))
             puts(colored.cyan(' 3: Spent - no funds to spend (because they have been spent)'))
-            puts(colored.cyan(' 4: Unused - no funds to spend (because they have never been used)'))
+            puts(colored.cyan(' 4: Unused - no funds to spend (because the address has never been used)'))
         choice = choice_prompt(
                 user_prompt=DEFAULT_PROMPT,
                 acceptable_responses=[1, 2, 3, 4],

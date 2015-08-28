@@ -107,7 +107,9 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
                 )
     if user_int < min_int:
         puts(colored.red('%s <  %s. Please try again.' % (
-            user_int, min_int)))
+            format_with_k_separator(user_int),
+            format_with_k_separator(min_int),
+            )))
         return get_int(
                 max_int=max_int,
                 min_int=min_int,
@@ -116,7 +118,9 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
                 )
     if user_int > max_int:
         puts(colored.red('%s >  %s. Please try again.' % (
-            user_input, max_int)))
+            format_with_k_separator(user_int),
+            format_with_k_separator(max_int),
+            )))
         return get_int(
                 max_int=max_int,
                 min_int=min_int,
