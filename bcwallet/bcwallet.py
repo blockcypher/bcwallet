@@ -262,8 +262,8 @@ def display_new_receiving_addresses(wallet_obj):
         addr_str = 'Address'
 
     puts('Unused %s Receiving %s - (for others to send you funds):' % (
+        COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
         addr_str,
-        COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev']
         ))
 
     for unused_receiving_address in unused_receiving_addresses:
@@ -310,12 +310,25 @@ def display_recent_txs(wallet_obj):
             tx_time = tx.get('received')
         else:
             tx_time = tx.get('confirmed')
-        puts(colored.green('%s GMT: %s satoshis (%s %s) %s in TX hash %s' % (
+
+        satoshis = tx.get('value', 0)
+
+        # HACK!
+        if tx.get('tx_input_n') >= 0:
+            action_str = 'sent'
+            sign_str = '-'
+        else:
+            action_str = 'received'
+            sign_str = '+'
+
+        puts(colored.green('%s GMT: %s%s satoshis (%s%s %s) %s in TX hash %s' % (
             tx_time.strftime("%Y-%m-%d %H:%M"),
-            format_with_k_separator(tx.get('value', 0)),
-            format_without_rounding(satoshis_to_btc(tx.get('value', 0))),
+            sign_str,
+            format_with_k_separator(satoshis),
+            sign_str,
+            format_without_rounding(satoshis_to_btc(satoshis)),
             COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
-            'sent' if tx.get('tx_input_n') >= 0 else 'received',  # HACK!
+            action_str,
             tx.get('tx_hash'),
             )))
 
@@ -792,10 +805,10 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
         else:
             puts('Which addresses do you want?')
         with indent(2):
-            puts(colored.cyan(' 1: All - regardless of whether they have funds to spend'))
-            puts(colored.cyan(' 2: Active - those with funds to spend'))
-            puts(colored.cyan(' 3: Spent - those with no funds to spend (because they have been spent)'))
-            puts(colored.cyan(' 4: Unused - those with no funds to spend (because they have never been used)'))
+            puts(colored.cyan(' 1: All (works offline) - regardless of whether they have funds to spend'))
+            puts(colored.cyan(' 2: Active - have funds to spend'))
+            puts(colored.cyan(' 3: Spent - no funds to spend (because they have been spent)'))
+            puts(colored.cyan(' 4: Unused - no funds to spend (because they have never been used)'))
         choice = choice_prompt(
                 user_prompt=DEFAULT_PROMPT,
                 acceptable_responses=[1, 2, 3, 4],
