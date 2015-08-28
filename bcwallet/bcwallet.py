@@ -8,7 +8,8 @@ from clint.textui import puts, colored, indent
 
 from bitmerchant.wallet import Wallet
 
-from blockcypher import (create_hd_wallet, get_wallet_details,
+from blockcypher import (create_hd_wallet, get_wallet_transactions,
+        get_wallet_addresses, derive_hd_address,
         create_unsigned_tx, verify_unsigned_tx, get_input_addresses,
         make_tx_signatures, broadcast_signed_transaction,
         get_blockchain_overview, get_total_balance)
@@ -16,7 +17,7 @@ from blockcypher.utils import (satoshis_to_btc, get_blockcypher_walletname_from_
         coin_symbol_from_mkey)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
-from .bc_utils import (guess_network_from_mkey,
+from .bc_utils import (guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key,
         find_hexkeypairs_from_bip32key_bc, get_tx_url, hexkeypair_list_to_dict,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
@@ -75,7 +76,7 @@ def display_balance_info(wallet_obj, verbose=False):
 
     coin_symbol = coin_symbol_from_mkey(mpub)
 
-    wallet_details = get_wallet_details(
+    wallet_details = get_wallet_transactions(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol,
@@ -109,9 +110,17 @@ def display_balance_info(wallet_obj, verbose=False):
     return wallet_details['final_balance']
 
 
-def get_used_addresses(wallet_obj):
+def get_addresses_on_both_chains(wallet_obj, used=None, zero_balance=None):
     '''
-    Get addresses already used by the wallet
+    Get addresses across both subchains based on the filter criteria passed in
+
+    Returns a list of dicts of the following form:
+        [
+            {'address': '1abc123...', 'path': 'm/0/9', 'pubkeyhex': '0123456...'},
+            ...,
+        ]
+
+    Dicts may also contain WIF and privkeyhex if wallet_obj has private key
     '''
     mpub = wallet_obj.serialize_b58(private=False)
 
@@ -120,68 +129,104 @@ def get_used_addresses(wallet_obj):
             subchain_indices=[0, 1],
             )
 
-    wallet_details = get_wallet_details(
+    wallet_addresses = get_wallet_addresses(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
+            is_hd_wallet=True,
+            used=used,
+            zero_balance=zero_balance,
             coin_symbol=coin_symbol_from_mkey(mpub),
             )
-    verbose_print(wallet_details)
+    verbose_print('wallet_addresses:')
+    verbose_print(wallet_addresses)
 
-    return set(wallet_details['wallet'].get('addresses', []))
+    if wallet_obj.private_key:
+        master_key = wallet_obj.serialize_b58(private=True)
+    else:
+        master_key = mpub
+
+    chains_address_paths_cleaned = []
+    for chain in wallet_addresses['chains']:
+        chain_address_paths = verify_and_fill_address_paths_from_bip32key(
+                address_paths=chain['chain_addresses'],
+                master_key=master_key,
+                network=guess_network_from_mkey(mpub),
+                )
+        chain_address_paths_cleaned = {
+                'index': chain['index'],
+                'chain_addresses': chain_address_paths,
+                }
+        chains_address_paths_cleaned.append(chain_address_paths_cleaned)
+
+    return chains_address_paths_cleaned
 
 
-def get_unused_addresses_on_subchain(wallet_obj, subchain_index,
-        num_addrs_to_return=5, used_addr_set=set()):
+def register_unused_addresses(wallet_obj, subchain_index, num_addrs=1):
     '''
-    Traverse a subchain_index for unused addresses
+    Hit /derive to register new unused_addresses on a subchain_index and verify them client-side
 
-    Returns a dict of the following form:
-        {'address': '1abc123...', 'path': 'm/0/9',}
+    Returns a list of dicts of the following form:
+        [
+            {'address': '1abc123...', 'path': 'm/0/9', 'public': '0123456...'},
+            ...,
+        ]
     '''
-    assert type(subchain_index) is int, subchain_index
 
-    verbose_print('get_unused_addresses_on_subchain called on subchain %s with the following used_addresses:%s\n' % (
+    verbose_print('register_unused_addresses called on subchain %s for %s addrs' % (
         subchain_index,
-        used_addr_set,
+        num_addrs,
         ))
 
-    subchain_wallet = wallet_obj.get_child(subchain_index)  # m/subchain_index
+    assert type(subchain_index) is int, subchain_index
+    assert type(num_addrs) is int, num_addrs
+    assert num_addrs > 0
 
-    attempt_cnt = 0
-    addresses_found = []
-    while True:
-        addr = subchain_wallet.get_child(attempt_cnt).to_address()
-        if addr not in used_addr_set:
-            addresses_found.append({
-                'address': addr,
-                'path': 'm/%s/%s' % (subchain_index, attempt_cnt),
-                })
+    mpub = wallet_obj.serialize_b58(private=False)
+    coin_symbol = coin_symbol_from_mkey(mpub)
+    wallet_name = get_blockcypher_walletname_from_mpub(
+            mpub=mpub,
+            subchain_indices=[0, 1],
+            )
+    network = guess_network_from_mkey(mpub)
 
-        if len(addresses_found) >= num_addrs_to_return:
-            break
+    # register new address(es)
+    new_addresses = derive_hd_address(
+            api_key=BLOCKCYPHER_API_KEY,
+            wallet_name=wallet_name,
+            num_addresses=num_addrs,
+            subchain_index=0,  # external chain
+            coin_symbol=coin_symbol,
+            )
 
-        attempt_cnt += 1
+    verbose_print('new_addresses:')
+    verbose_print(new_addresses)
 
-    return addresses_found
+    address_paths = new_addresses['addresses']
+
+    # verify new addresses client-side
+    full_address_paths = verify_and_fill_address_paths_from_bip32key(
+            address_paths=address_paths,
+            master_key=mpub,
+            network=network,
+            )
+
+    return full_address_paths
 
 
-def get_unused_receiving_addresses(wallet_obj, num_addrs_to_return=5):
-    used_addr_set = get_used_addresses(wallet_obj=wallet_obj)
-    return get_unused_addresses_on_subchain(
+def get_unused_receiving_addresses(wallet_obj, num_addrs=1):
+
+    return register_unused_addresses(
             wallet_obj=wallet_obj,
             subchain_index=0,  # external chain
-            num_addrs_to_return=num_addrs_to_return,
-            used_addr_set=used_addr_set,
+            num_addrs=num_addrs,
             )
 
 
-def get_unused_change_addresses(wallet_obj, num_addrs_to_return=1):
-    used_addr_set = get_used_addresses(wallet_obj=wallet_obj)
-    return get_unused_addresses_on_subchain(
+def get_unused_change_addresses(wallet_obj, num_addrs=1):
+    return register_unused_addresses(
             wallet_obj=wallet_obj,
             subchain_index=1,  # internal chain
-            num_addrs_to_return=num_addrs_to_return,
-            used_addr_set=used_addr_set,
+            num_addrs=num_addrs,
             )
 
 
@@ -189,25 +234,42 @@ def display_new_receiving_addresses(wallet_obj):
 
     if not USER_ONLINE:
         puts(colored.red('BlockCypher connection needed to see which addresses have been used.'))
-        puts(colored.red('You may dump all your addresses while offline by selecting option 0.'))
+        puts(colored.red('You may dump all your addresses offline by selecting option 0.'))
         return
 
     mpub = wallet_obj.serialize_b58(private=False)
 
+    puts('How many receiving addreses keys do you want to see (max 5)?')
+    num_addrs = get_int(
+            user_prompt=DEFAULT_PROMPT,
+            min_int=1,
+            max_int=5,
+            default_input='1',
+            show_default=True,
+            )
+
+    verbose_print('num_addrs:\n%s' % num_addrs)
+
     unused_receiving_addresses = get_unused_receiving_addresses(
             wallet_obj=wallet_obj,
-            num_addrs_to_return=5,
+            num_addrs=num_addrs,
             )
 
     puts('-' * 70 + '\n')
-    puts('Next 5 Unused %s Receiving Addresses (for people to send you funds):' %
-            COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev']
-            )
+    if num_addrs > 1:
+        addr_str = 'Addresses'
+    else:
+        addr_str = 'Address'
+
+    puts('Unused %s Receiving %s - (for others to send you funds):' % (
+        addr_str,
+        COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev']
+        ))
 
     for unused_receiving_address in unused_receiving_addresses:
         with indent(2):
             puts(colored.green('%s (path is %s)' % (
-                unused_receiving_address['address'],
+                unused_receiving_address['pub_address'],
                 unused_receiving_address['path'],
                 )))
 
@@ -227,7 +289,7 @@ def display_recent_txs(wallet_obj):
             subchain_indices=[0, 1],
             )
 
-    wallet_details = get_wallet_details(
+    wallet_details = get_wallet_transactions(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol_from_mkey(mpub),
@@ -276,7 +338,7 @@ def send_funds(wallet_obj):
             mpub=mpub,
             subchain_indices=[0, 1],
             )
-    wallet_details = get_wallet_details(
+    wallet_details = get_wallet_transactions(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol,
@@ -312,8 +374,8 @@ def send_funds(wallet_obj):
 
     change_address = get_unused_change_addresses(
             wallet_obj=wallet_obj,
-            num_addrs_to_return=1,
-            )[0]['address']
+            num_addrs=1,
+            )[0]['pub_address']
 
     tx_preference = txn_preference_chooser(
             user_prompt=DEFAULT_PROMPT,
@@ -497,8 +559,8 @@ def sweep_funds_from_privkey(wallet_obj):
 
     dest_addr = get_unused_receiving_addresses(
             wallet_obj=wallet_obj,
-            num_addrs_to_return=1,
-            )[0]['address']
+            num_addrs=1,
+            )[0]['pub_address']
 
     outputs = [{
             'address': dest_addr,
@@ -580,86 +642,63 @@ def sweep_funds_from_privkey(wallet_obj):
     display_balance_info(wallet_obj=wallet_obj)
 
 
-def print_key_path_info(address, wif, path, coin_symbol, skip_nobalance=False):
-    if path:
-        path_display = path
+def print_key_path_header():
+    puts('path (address/wif)')
+
+
+def print_address_path_header():
+    puts('path (address)')
+
+
+def print_path_info(address, path, coin_symbol, wif=None):
+
+    assert path, path
+    assert coin_symbol, coin_symbol
+    assert address, address
+
+    if wif:
+        address_formatted = '%s/%s' % (address, wif)
     else:
-        path_display = 'deeper traversal needed'
+        address_formatted = address
 
     if USER_ONLINE:
         addr_balance = get_total_balance(
                 address=address,
                 coin_symbol=coin_symbol,
                 )
-        if skip_nobalance and not addr_balance:
-            # some addresses were used and subsequently emptied
-            return
 
         with indent(2):
-            puts(colored.green('%s (%s/%s) - %s satoshis (%s %s)' % (
-                path_display,
-                address,
-                wif,
+            puts(colored.green('%s (%s) - %s satoshis (%s %s)' % (
+                path,
+                address_formatted,
                 format_with_k_separator(addr_balance),
                 format_without_rounding(satoshis_to_btc(addr_balance)),
                 COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
                 )))
     else:
         with indent(2):
-            puts(colored.green('%s (%s/%s)' % (
-                    path_display,
-                    address,
-                    wif,
-                    )))
+            puts(colored.green('%s (%s)' % (
+                path,
+                address_formatted,
+                )))
 
 
-def print_key_path_header():
-    with indent(2):
-        puts('path (address/wif)')
-
-
-def print_address_path_info(address, path, coin_symbol, skip_nobalance=False):
-        if path:
-            path_display = path
-        else:
-            path_display = 'deeper traversal needed'
-
-        if USER_ONLINE:
-            addr_balance = get_total_balance(
-                    address=address,
-                    coin_symbol=coin_symbol,
-                    )
-            if skip_nobalance and not addr_balance:
-                # some addresses were used and subsequently emptied
-                return
-
-            with indent(2):
-                puts(colored.green('%s (%s) - %s satoshis (%s %s)' % (
-                    path_display,
-                    address,
-                    format_with_k_separator(addr_balance),
-                    format_without_rounding(satoshis_to_btc(addr_balance)),
-                    COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
-                    )))
-        else:
-            with indent(2):
-                puts(colored.green('%s (%s)' % (
-                    path_display,
-                    address,
-                    )))
-
-
-def print_address_path_header():
-    with indent(2):
-        puts('path (address)')
-
-
-def dump_all_keys(wallet_obj):
+def dump_all_keys_or_addrs(wallet_obj):
+    '''
+    Offline-enabled mechanism to dump addresses
+    '''
 
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = coin_symbol_from_mkey(mpub)
+    if wallet_obj.private_key is None:
+        puts('Displaying Public Addresses Only')
+        puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
+        priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
+        print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
-    puts('How many private keys (on each chain) do you want to dump?')
+    if wallet_obj.private_key:
+        puts('How many private keys (on each chain) do you want to dump?')
+    else:
+        puts('How many addresses (on each chain) do you want to dump?')
     num_keys = get_int(
             user_prompt=DEFAULT_PROMPT,
             max_int=10**5,
@@ -679,190 +718,100 @@ def dump_all_keys(wallet_obj):
                     puts('Internal Chain - m/1/k')
                     print_key_path_header()
             child_wallet = wallet_obj.get_child_for_path(path)
-            print_key_path_info(
+            if wallet_obj.private_key:
+                wif_to_use = child_wallet.export_to_wif()
+            else:
+                wif_to_use = None
+            print_path_info(
                     address=child_wallet.to_address(),
                     path=path,
-                    wif=child_wallet.export_to_wif(),
-                    coin_symbol=coin_symbol,
-                    skip_nobalance=False,
+                    wif=wif_to_use,
+                    coin_symbol=coin_symbol_from_mkey(mpub),
                     )
 
     puts(colored.blue('You can compare this output to bip32.org'))
 
 
-def dump_active_keys(wallet_obj):
-    mpriv = wallet_obj.serialize_b58(private=True)
+def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
+    '''
+    Works for both public key only or private key access
+    '''
     mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = coin_symbol_from_mkey(mpub)
-    used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
 
-    # get active addresses
-    hexkeypairs = find_hexkeypairs_from_bip32key_bc(
-            pub_address_list=used_addresses,
-            master_key=mpriv,
-            network=guess_network_from_mkey(mpub),
-            starting_pos=0,
-            # TODO: get blockcypher to return paths for speed/quality increase
-            depth=100,
+    if wallet_obj.private_key is None:
+        puts('Displaying Public Addresses Only')
+        puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
+        priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
+        print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
+
+    chain_address_objs = get_addresses_on_both_chains(
+            wallet_obj=wallet_obj,
+            used=used,
+            zero_balance=zero_balance,
             )
 
-    for cnt, hexkeypair_dict in enumerate(hexkeypairs):
-        if cnt == 0:
-            print_key_path_header()
-        print_key_path_info(
-                address=hexkeypair_dict['pub_address'],
-                wif=hexkeypair_dict['wif'],
-                path=hexkeypair_dict['path'],
-                coin_symbol=coin_symbol,
-                skip_nobalance=True,
-                )
+    addr_cnt = 0
+    for chain_address_obj in chain_address_objs:
+        for cnt, address_obj in enumerate(chain_address_obj['chain_addresses']):
+            if cnt == 0:
+                print_key_path_header()
 
-    found_addresses = [x['pub_address'] for x in hexkeypairs]
-    notfound_addrs = set(used_addresses) - set(found_addresses)
+            print_path_info(
+                    address=address_obj['pub_address'],
+                    wif=address_obj['wif'],
+                    path=address_obj['path'],
+                    coin_symbol=coin_symbol_from_mkey(mpub),
+                    )
 
-    for cnt, notfound_addr in enumerate(notfound_addrs):
-        if cnt == 0:
-            print_address_path_header()
-        print_address_path_info(
-                address=notfound_addr,
-                path=None,
-                coin_symbol=coin_symbol,
-                skip_nobalance=True,
-                )
+            addr_cnt += 1
 
-    puts(colored.blue('You can compare this output to bip32.org'))
+    if addr_cnt:
+        puts(colored.blue('You can compare this output to bip32.org'))
+    else:
+        if wallet_obj.private_key:
+            content_str = 'private keys'
+        else:
+            content_str = 'addresses'
+        puts(colored.green('No matching %s in this subset. Would you like to dump *all* matching %s instead?' % (
+            content_str,
+            content_str
+            )))
+        if confirm(user_prompt=DEFAULT_PROMPT, default=True):
+            dump_all_keys_or_addrs(wallet_obj=wallet_obj)
 
 
-def dump_private_keys(wallet_obj):
+def dump_private_keys_or_addrs_chooser(wallet_obj):
     '''
     Offline-enabled mechanism to dump everything
     '''
 
     if USER_ONLINE:
         # Ask if they want active or all
-        puts('Which private keys and addresses do you want?')
+        if wallet_obj.private_key:
+            puts('Which private keys and addresses do you want?')
+        else:
+            puts('Which addresses do you want?')
         with indent(2):
             puts(colored.cyan(' 1: All - regardless of whether they have funds to spend'))
             puts(colored.cyan(' 2: Active - those with funds to spend'))
+            puts(colored.cyan(' 3: Spent - those with no funds to spend (because they have been spent)'))
+            puts(colored.cyan(' 4: Unused - those with no funds to spend (because they have never been used)'))
         choice = choice_prompt(
                 user_prompt=DEFAULT_PROMPT,
-                acceptable_responses=[1, 2],
+                acceptable_responses=[1, 2, 3, 4],
                 default_input='1',
                 show_default=True,
                 )
         if choice == '1':
-            return dump_all_keys(wallet_obj=wallet_obj)
+            return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
         elif choice == '2':
-            return dump_active_keys(wallet_obj=wallet_obj)
+            return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=False, used=True)
+        elif choice == '3':
+            return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=True, used=True)
+        elif choice == '4':
+            return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=None, used=False)
 
-    return dump_all_keys(wallet_obj=wallet_obj)
-
-
-def dump_all_addresses(wallet_obj):
-    '''
-    Offline-enabled mechanism to dump addresses
-    '''
-
-    mpub = wallet_obj.serialize_b58(private=False)
-    coin_symbol = coin_symbol_from_mkey(mpub)
-
-    puts('How many addresses (on each chain) do you want to dump?')
-    num_keys = get_int(
-            max_int=10**5,
-            user_prompt=DEFAULT_PROMPT,
-            default_input='5',
-            show_default=True,
-            )
-
-    puts('-' * 70 + '\n')
-    for chain_int in (0, 1):
-        for current in range(0, num_keys):
-            path = "m/%d/%d" % (chain_int, current)
-            if current == 0:
-                if chain_int == 0:
-                    puts('External Chain Addresses - m/0/k:')
-                    print_address_path_header()
-                elif chain_int == 1:
-                    puts('Internal Chain Addresses - m/1/k:')
-                    print_address_path_header()
-            child_wallet = wallet_obj.get_child_for_path(path)
-            print_address_path_info(
-                    address=child_wallet.to_address(),
-                    path=path,
-                    coin_symbol=coin_symbol,
-                    skip_nobalance=False,
-                    )
-
-    puts(colored.blue('You can compare this output to bip32.org'))
-
-
-def dump_active_addresses(wallet_obj):
-    mpub = wallet_obj.serialize_b58(private=False)
-
-    puts('Displaying Public Addresses Only')
-    puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
-
-    priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
-    print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
-
-    coin_symbol = coin_symbol_from_mkey(mpub)
-    used_addresses = list(get_used_addresses(wallet_obj=wallet_obj))
-
-    # get active addresses
-    hexkeypairs = find_hexkeypairs_from_bip32key_bc(
-            pub_address_list=used_addresses,
-            master_key=mpub,
-            network=guess_network_from_mkey(mpub),
-            starting_pos=0,
-            # TODO: get blockcypher to return paths for speed/quality increase
-            depth=100,
-            )
-
-    for cnt, hexkeypair_dict in enumerate(hexkeypairs):
-        if cnt == 0:
-            print_address_path_header()
-        print_address_path_info(
-                address=hexkeypair_dict['pub_address'],
-                path=hexkeypair_dict['path'],
-                coin_symbol=coin_symbol,
-                skip_nobalance=True,
-                )
-
-    found_addresses = [x['pub_address'] for x in hexkeypairs]
-    notfound_addrs = set(used_addresses) - set(found_addresses)
-
-    for cnt, notfound_addr in enumerate(notfound_addrs):
-        if cnt == 0:
-            print_address_path_header()
-        print_address_path_info(
-                address=notfound_addr,
-                path=None,
-                coin_symbol=coin_symbol,
-                skip_nobalance=True,
-                )
-
-    puts(colored.blue('You can compare this output to bip32.org'))
-
-
-def dump_addresses(wallet_obj):
-    if USER_ONLINE:
-        # Ask if they want active or all
-        puts('Which addresses do you want?')
-        with indent(2):
-            puts(colored.cyan('1: All - regardless of whether they have funds to spend'))
-            puts(colored.cyan('2: Active - those with funds to spend'))
-        choice = choice_prompt(
-                user_prompt=DEFAULT_PROMPT,
-                acceptable_responses=[1, 2],
-                default_input='1',
-                show_default=True,
-                )
-        if choice == '1':
-            return dump_all_addresses(wallet_obj=wallet_obj)
-        elif choice == '2':
-            return dump_active_addresses(wallet_obj=wallet_obj)
-
-    return dump_all_addresses(wallet_obj=wallet_obj)
+    return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
 
 
 def send_chooser(wallet_obj):
@@ -950,8 +899,8 @@ def wallet_home(wallet_obj):
         if not USER_ONLINE:
             puts("(since you are NOT connected to BlockCypher, many choices are disabled)")
         with indent(2):
-            puts(colored.cyan('1: Show new receiving addresses'))
-            puts(colored.cyan('2: Show balance and transactions'))
+            puts(colored.cyan('1: Show balance and transactions'))
+            puts(colored.cyan('2: Show new receiving addresses'))
             puts(colored.cyan('3: Send funds (more options here)'))
 
         if wallet_obj.private_key:
@@ -965,6 +914,7 @@ def wallet_home(wallet_obj):
                 user_prompt=DEFAULT_PROMPT,
                 acceptable_responses=range(0, 3+1),
                 quit_ok=True,
+                default_input='1',
                 )
         verbose_print('Choice: %s' % choice)
 
@@ -972,16 +922,13 @@ def wallet_home(wallet_obj):
             puts(colored.green('Thanks for using bcwallet!'))
             break
         elif choice == '1':
-            display_new_receiving_addresses(wallet_obj=wallet_obj)
-        elif choice == '2':
             display_recent_txs(wallet_obj=wallet_obj)
+        elif choice == '2':
+            display_new_receiving_addresses(wallet_obj=wallet_obj)
         elif choice == '3':
             send_chooser(wallet_obj=wallet_obj)
         elif choice == '0':
-            if wallet_obj.private_key:
-                dump_private_keys(wallet_obj=wallet_obj)
-            else:
-                dump_addresses(wallet_obj)
+            dump_private_keys_or_addrs_chooser(wallet_obj=wallet_obj)
 
 
 def cli():
