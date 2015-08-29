@@ -1,10 +1,6 @@
-bcwallet is still under development and not ready for production use. Use at your own risk.
-
-### Currently, the management of traversing for unused adresses is a bit wonky. A change is coming shortly. We recommend not using bcwallet in the meantime.
+Use at your own risk. We recommend starting with blockcypher testnet coins free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet).
 
 # Installation
-
-## PIP INSTALATTION TEMPORARILY DISABLED DURING NAME CHANGE, WILL BE BACK SOON.
 
 To get started:
 ```
