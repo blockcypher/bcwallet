@@ -786,6 +786,21 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
     '''
     Works for both public key only or private key access
     '''
+    if wallet_obj.private_key:
+        content_str = 'private keys'
+    else:
+        content_str = 'addresses'
+
+    if not USER_ONLINE:
+        puts(colored.red('\nInternet connection required, would you like to dump *all* %s instead?' % (
+            content_str,
+            content_str,
+            )))
+        if confirm(user_prompt=DEFAULT_PROMPT, default=True):
+            dump_all_keys_or_addrs(wallet_obj=wallet_obj)
+        else:
+            return
+
     mpub = wallet_obj.serialize_b58(private=False)
 
     if wallet_obj.private_key is None:
@@ -818,14 +833,10 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
     if addr_cnt:
         puts(colored.blue('You can compare this output to bip32.org'))
     else:
-        if wallet_obj.private_key:
-            content_str = 'private keys'
-        else:
-            content_str = 'addresses'
-        puts(colored.green('No matching %s in this subset. Would you like to dump *all* matching %s instead?' % (
+        puts('No matching %s in this subset. Would you like to dump *all* %s instead?' % (
             content_str,
-            content_str
-            )))
+            content_str,
+            ))
         if confirm(user_prompt=DEFAULT_PROMPT, default=True):
             dump_all_keys_or_addrs(wallet_obj=wallet_obj)
 
@@ -835,41 +846,37 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
     Offline-enabled mechanism to dump everything
     '''
 
-    if USER_ONLINE:
-        # Ask if they want active or all
-        if wallet_obj.private_key:
-            puts('Which private keys and addresses do you want?')
-        else:
-            puts('Which addresses do you want?')
-        with indent(2):
-            puts(colored.cyan(' 1: All (works offline) - regardless of whether they have funds to spend'))
-            puts(colored.cyan(' 2: Active - have funds to spend'))
-            puts(colored.cyan(' 3: Spent - no funds to spend (because they have been spent)'))
-            puts(colored.cyan(' 4: Unused - no funds to spend (because the address has never been used)'))
-        choice = choice_prompt(
-                user_prompt=DEFAULT_PROMPT,
-                acceptable_responses=[1, 2, 3, 4],
-                default_input='1',
-                show_default=True,
-                quit_ok=True,
-                )
+    if wallet_obj.private_key:
+        puts('Which private keys and addresses do you want?')
+    else:
+        puts('Which addresses do you want?')
+    with indent(2):
+        puts(colored.cyan(' 1: All (works offline) - regardless of whether they have funds to spend'))
+        puts(colored.cyan(' 2: Active - have funds to spend'))
+        puts(colored.cyan(' 3: Spent - no funds to spend (because they have been spent)'))
+        puts(colored.cyan(' 4: Unused - no funds to spend (because the address has never been used)'))
+    choice = choice_prompt(
+            user_prompt=DEFAULT_PROMPT,
+            acceptable_responses=[1, 2, 3, 4],
+            default_input='1',
+            show_default=True,
+            quit_ok=True,
+            )
 
-        if choice in ('q', 'Q'):
-            return
+    if choice in ('q', 'Q'):
+        return
 
-        if wallet_obj.private_key:
-            puts("\nNOTE: Do not reveal your private keys to anyone! One quirk of HD wallets is that if an attacker learns any of your non-hardened child private keys as well as your master public key then the attacker can derive all of your private keys and steal all of your funds.\n")
+    if wallet_obj.private_key:
+        puts("\nNOTE: Do not reveal your private keys to anyone! One quirk of HD wallets is that if an attacker learns any of your non-hardened child private keys as well as your master public key then the attacker can derive all of your private keys and steal all of your funds.\n")
 
-        if choice == '1':
-            return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
-        elif choice == '2':
-            return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=False, used=True)
-        elif choice == '3':
-            return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=True, used=True)
-        elif choice == '4':
-            return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=None, used=False)
-
-    return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
+    if choice == '1':
+        return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
+    elif choice == '2':
+        return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=False, used=True)
+    elif choice == '3':
+        return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=True, used=True)
+    elif choice == '4':
+        return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=None, used=False)
 
 
 def send_chooser(wallet_obj):
