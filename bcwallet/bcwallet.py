@@ -105,8 +105,6 @@ def display_balance_info(wallet_obj, verbose=False):
         tx_string += ' (+%s Unconfirmed)' % wallet_details['unconfirmed_n_tx']
     puts(colored.green(tx_string))
 
-    puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
-
     return wallet_details['final_balance']
 
 
@@ -335,6 +333,8 @@ def display_recent_txs(wallet_obj):
             action_str,
             tx.get('tx_hash'),
             )))
+
+    puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
 
 
 def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
@@ -571,7 +571,7 @@ def sign_tx_offline(wallet_obj):
         if USER_ONLINE:
             # double check in case we booted online and then disconnected
             if is_connected_to_blockcypher():
-                puts(colored.red("You are connected to the internet while trying to sign a transaction offline. This feature is mainly used by developers who want to spend funds on their cold wallet without exposing their private keys. If you didn't mean to enter your master PRIVATE key on an internet connected machine, you may want to consider moving your funds to a cold wallet.\n"))
+                puts(colored.red("Why are you trying to sign a transaction offline while connected to the internet? This feature is for developers to spend funds on their cold wallet without exposing their private keys to an internet connected machine. If you didn't mean to enter your master PRIVATE key on an internet connected machine, you may want to consider moving your funds to a cold wallet.\n"))
 
     # TODO: implement
     puts(colored.red('Feature Coming Soon'))
@@ -879,16 +879,38 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=None, used=False)
 
 
+def offline_tx_chooser(wallet_obj):
+    puts('What do you want to do?:')
+    puts(colored.cyan('1: Generate transaction for offline signing'))
+    puts(colored.cyan('2: Sign transaction offline'))
+    puts(colored.cyan('3: Broadcast transaction previously signed offline'))
+    choice = choice_prompt(
+            user_prompt=DEFAULT_PROMPT,
+            acceptable_responses=range(0, 3+1),
+            quit_ok=True,
+            default_input='1',
+            show_default=True,
+            )
+    verbose_print('Choice: %s' % choice)
+
+    if choice in ('q', 'Q'):
+        return
+    elif choice == '1':
+        return generate_offline_tx(wallet_obj=wallet_obj)
+    elif choice == '2':
+        return sign_tx_offline(wallet_obj=wallet_obj)
+    elif choice == '3':
+        return broadcast_signed_tx(wallet_obj=wallet_obj)
+
+
 def send_chooser(wallet_obj):
     puts('What do you want to do?:')
     if not USER_ONLINE:
-        puts("(since you are NOT connected to BlockCypher, many choices will not work)")
+        puts("(since you are NOT connected to BlockCypher, many choices are disabled)")
     with indent(2):
         puts(colored.cyan('1: Basic send (generate transaction, sign, & broadcast)'))
         puts(colored.cyan('2: Sweep funds into bcwallet from a private key you hold'))
-        puts(colored.cyan('3: Generate transaction for offline signing'))
-        puts(colored.cyan('4: Sign transaction offline'))
-        puts(colored.cyan('5: Broadcast transaction previously signed offline'))
+        puts(colored.cyan('3: Offline transaction signing (more here)'))
 
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
@@ -906,11 +928,7 @@ def send_chooser(wallet_obj):
     elif choice == '2':
         return sweep_funds_from_privkey(wallet_obj=wallet_obj)
     elif choice == '3':
-        return generate_offline_tx(wallet_obj=wallet_obj)
-    elif choice == '4':
-        return sign_tx_offline(wallet_obj=wallet_obj)
-    elif choice == '5':
-        return broadcast_signed_tx(wallet_obj=wallet_obj)
+        offline_tx_chooser(wallet_obj=wallet_obj)
 
 
 def wallet_home(wallet_obj):
