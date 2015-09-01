@@ -199,7 +199,7 @@ def register_unused_addresses(wallet_obj, subchain_index, num_addrs=1):
             api_key=BLOCKCYPHER_API_KEY,
             wallet_name=wallet_name,
             num_addresses=num_addrs,
-            subchain_index=0,  # external chain
+            subchain_index=subchain_index,
             coin_symbol=coin_symbol,
             )
 
