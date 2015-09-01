@@ -32,6 +32,8 @@ from .cl_utils import (debug_print, choice_prompt,
 
 import traceback
 
+from tzlocal import get_localzone
+
 
 # Globals that can be overwritten at startup
 VERBOSE_MODE = False
@@ -289,6 +291,8 @@ def display_recent_txs(wallet_obj):
         puts(colored.red('You may dump all your addresses while offline by selecting option 0.'))
         return
 
+    local_tz = get_localzone()
+
     # Show overall balance info
     display_balance_info(wallet_obj=wallet_obj)
 
@@ -330,8 +334,8 @@ def display_recent_txs(wallet_obj):
             action_str = 'received'
             sign_str = '+'
 
-        puts(colored.green('%s GMT: %s%s %s in TX hash %s' % (
-            tx_time.strftime("%Y-%m-%d %H:%M"),
+        puts(colored.green('%s: %s%s %s in TX hash %s' % (
+            tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
             sign_str,
             format_crypto_units(
                 input_quantity=satoshis,
@@ -545,7 +549,7 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
     else:
         dest_satoshis_to_display = dest_satoshis
 
-    CONF_TEXT = "Send %s to %s with a fee of %s, which is %s%% of the amount you're sending?" % (
+    CONF_TEXT = "Send %s to %s with a fee of %s (%s%% of the amount you're sending)?" % (
             format_crypto_units(
                 input_quantity=dest_satoshis_to_display,
                 input_type='satoshi',
@@ -733,6 +737,14 @@ def sweep_funds_from_privkey(wallet_obj):
     display_balance_info(wallet_obj=wallet_obj)
 
 
+def print_external_chain():
+    puts('\nExternal Chain - m/0/k:')
+
+
+def print_internal_chain():
+    puts('\nInternal Chain - m/1/k')
+
+
 def print_key_path_header():
     puts('path (address/wif)')
 
@@ -807,10 +819,10 @@ def dump_all_keys_or_addrs(wallet_obj):
             path = "m/%d/%d" % (chain_int, current)
             if current == 0:
                 if chain_int == 0:
-                    puts('\nExternal Chain - m/0/k:')
+                    print_external_chain()
                     print_key_path_header()
                 elif chain_int == 1:
-                    puts('\nInternal Chain - m/1/k')
+                    print_internal_chain()
                     print_key_path_header()
             child_wallet = wallet_obj.get_child_for_path(path)
             if wallet_obj.private_key:
@@ -864,9 +876,12 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
 
     addr_cnt = 0
     for chain_address_obj in chain_address_objs:
-        for cnt, address_obj in enumerate(chain_address_obj['chain_addresses']):
-            if cnt == 0:
-                print_key_path_header()
+        if chain_address_obj['index'] == 0:
+            print_external_chain()
+        elif chain_address_obj['index'] == 1:
+            print_internal_chain()
+        print_key_path_header()
+        for address_obj in chain_address_obj['chain_addresses']:
 
             print_path_info(
                     address=address_obj['pub_address'],
