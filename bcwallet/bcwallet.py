@@ -13,21 +13,22 @@ from blockcypher import (create_hd_wallet, get_wallet_transactions,
         create_unsigned_tx, verify_unsigned_tx, get_input_addresses,
         make_tx_signatures, broadcast_signed_transaction,
         get_blockchain_overview, get_total_balance)
-from blockcypher.utils import (satoshis_to_btc, get_blockcypher_walletname_from_mpub,
-        coin_symbol_from_mkey)
+from blockcypher.utils import (get_blockcypher_walletname_from_mpub,
+        coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from .bc_utils import (guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key,
         find_hexkeypairs_from_bip32key_bc, get_tx_url, hexkeypair_list_to_dict,
         COIN_SYMBOL_TO_BMERCHANT_NETWORK)
 
-from .cl_utils import (format_without_rounding, format_with_k_separator,
-        debug_print, choice_prompt, get_crypto_address, get_wif_obj, get_int,
+from .cl_utils import (debug_print, choice_prompt,
+        get_crypto_address, get_wif_obj,
+        get_crypto_qty, get_int,
         confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser,
         first4mprv_from_mpub, print_pubwallet_notice,
         print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening,
         print_bcwallet_basic_pub_opening,
-        BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
+        UNIT_CHOICES, BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
 
 import traceback
 
@@ -36,6 +37,7 @@ import traceback
 VERBOSE_MODE = False
 USER_ONLINE = False
 BLOCKCYPHER_API_KEY = ''
+UNIT_CHOICE = ''
 
 
 def verbose_print(to_print):
@@ -83,26 +85,31 @@ def display_balance_info(wallet_obj, verbose=False):
             )
     verbose_print(wallet_details)
 
-    currency_abbrev = COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev']
     puts('-' * 70 + '\n')
-    puts(colored.green('Confirmed Received: %s satoshis (%s %s)' % (
-        format_with_k_separator(wallet_details['total_received']),
-        satoshis_to_btc(wallet_details['total_received']),
-        currency_abbrev,
-        )))
-    puts(colored.green('Confirmed Sent: %s satoshis (%s %s)' % (
-        format_with_k_separator(wallet_details['total_sent']),
-        satoshis_to_btc(wallet_details['total_sent']),
-        currency_abbrev,
-        )))
-    puts(colored.green('Confirmed Balance: %s satoshis (%s %s)' % (
-        format_with_k_separator(wallet_details['balance']),
-        satoshis_to_btc(wallet_details['balance']),
-        currency_abbrev,
-        )))
-    tx_string = 'Confirmed Transactions: %s' % wallet_details['n_tx']
+    balance_str = 'Balance: %s' % (
+            format_crypto_units(
+                input_quantity=wallet_details['final_balance'],
+                input_type=UNIT_CHOICE,
+                output_type=UNIT_CHOICE,
+                coin_symbol=coin_symbol,
+                print_cs=True,
+            ))
+    puts(colored.green(balance_str))
+    if wallet_details['unconfirmed_balance']:
+        balance_str += ' (%s%s of this is unconfirmed)' % (
+                '+' if wallet_details['unconfirmed_balance'] else '',  # hack
+                format_crypto_units(
+                    input_quantity=wallet_details['unconfirmed_balance'],
+                    input_type=UNIT_CHOICE,
+                    output_type=UNIT_CHOICE,
+                    print_cs=True,
+                    coin_symbol=coin_symbol,
+                ),
+                )
+
+    tx_string = 'Transactions: %s' % wallet_details['final_n_tx']
     if wallet_details['unconfirmed_n_tx']:
-        tx_string += ' (+%s Unconfirmed)' % wallet_details['unconfirmed_n_tx']
+        tx_string += ' (%s unconfirmed)' % wallet_details['unconfirmed_n_tx']
     puts(colored.green(tx_string))
 
     return wallet_details['final_balance']
@@ -188,7 +195,7 @@ def register_unused_addresses(wallet_obj, subchain_index, num_addrs=1):
     network = guess_network_from_mkey(mpub)
 
     # register new address(es)
-    new_addresses = derive_hd_address(
+    derivation_response = derive_hd_address(
             api_key=BLOCKCYPHER_API_KEY,
             wallet_name=wallet_name,
             num_addresses=num_addrs,
@@ -196,10 +203,10 @@ def register_unused_addresses(wallet_obj, subchain_index, num_addrs=1):
             coin_symbol=coin_symbol,
             )
 
-    verbose_print('new_addresses:')
-    verbose_print(new_addresses)
+    verbose_print('derivation_response:')
+    verbose_print(derivation_response)
 
-    address_paths = new_addresses['addresses']
+    address_paths = derivation_response['chains'][0]['chain_addresses']
 
     # verify new addresses client-side
     full_address_paths = verify_and_fill_address_paths_from_bip32key(
@@ -323,13 +330,16 @@ def display_recent_txs(wallet_obj):
             action_str = 'received'
             sign_str = '+'
 
-        puts(colored.green('%s GMT: %s%s satoshis (%s%s %s) %s in TX hash %s' % (
+        puts(colored.green('%s GMT: %s%s %s in TX hash %s' % (
             tx_time.strftime("%Y-%m-%d %H:%M"),
             sign_str,
-            format_with_k_separator(satoshis),
-            sign_str,
-            format_without_rounding(satoshis_to_btc(satoshis)),
-            COIN_SYMBOL_MAPPINGS[coin_symbol_from_mkey(mpub)]['currency_abbrev'],
+            format_crypto_units(
+                input_quantity=satoshis,
+                input_type=UNIT_CHOICE,
+                output_type=UNIT_CHOICE,
+                coin_symbol=coin_symbol_from_mkey(mpub),
+                print_cs=True,
+                ),
             action_str,
             tx.get('tx_hash'),
             )))
@@ -337,7 +347,7 @@ def display_recent_txs(wallet_obj):
     puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
 
 
-def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
+def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_preference=None):
     if not USER_ONLINE:
         puts(colored.red('Blockcypher connection needed to fetch unspents and broadcast signed transaction.'))
         puts(colored.red('You may dump all your addresses and private keys while offline by selecting option 0 on the home screen.'))
@@ -371,16 +381,39 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
     if not destination_address:
         display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
         puts('What %s address do you want to send to?' % display_shortname)
-        destination_address = get_crypto_address(coin_symbol=coin_symbol)
+        destination_address = get_crypto_address(coin_symbol=coin_symbol, quit_ok=True)
+        if destination_address in ('q', 'Q'):
+            puts(colored.red('Transaction Not Broadcast!'))
+            return
 
     if not dest_satoshis:
 
-        VALUE_PROMPT = 'Your current balance is %s (in satoshis). How much do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
-                format_with_k_separator(wallet_details['final_balance']))
+        VALUE_PROMPT = 'Your current balance is %s. How much (in %s) do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
+                format_crypto_units(
+                    input_quantity=wallet_details['final_balance'],
+                    input_type='satoshi',
+                    output_type=UNIT_CHOICE,
+                    coin_symbol=coin_symbol,
+                    print_cs=True,
+                    ),
+                UNIT_CHOICE,
+                )
         puts(VALUE_PROMPT)
-        dest_satoshis = get_int(
-                max_int=wallet_details['final_balance'],
+        dest_crypto_qty = get_crypto_qty(
+                max_num=from_satoshis(
+                    input_satoshis=wallet_details['final_balance'],
+                    output_type=UNIT_CHOICE,
+                    ),
+                input_type=UNIT_CHOICE,
                 user_prompt=DEFAULT_PROMPT,
+                quit_ok=True,
+                )
+        if dest_crypto_qty in ('q', 'Q'):
+            puts(colored.red('Transaction Not Broadcast!'))
+            return
+        dest_satoshis = to_satoshis(
+                input_quantity=dest_crypto_qty,
+                input_type=UNIT_CHOICE,
                 )
 
     inputs = [{
@@ -402,10 +435,8 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
                 num_addrs=1,
                 )[0]['pub_address']
 
-    tx_preference = txn_preference_chooser(
-            user_prompt=DEFAULT_PROMPT,
-            default_input='1',
-            )
+    if not tx_preference:
+        tx_preference = txn_preference_chooser(user_prompt=DEFAULT_PROMPT)
 
     verbose_print('Inputs:')
     verbose_print(inputs)
@@ -432,16 +463,20 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
 
     if 'errors' in unsigned_tx:
         if any([x.get('error', '').startswith('Not enough funds after fees') for x in unsigned_tx['errors']]):
-            puts('Not (quite) enough funds after fees to send %s satoshis (%s %s). Would you like to send the max you can instead?' % (
-                format_with_k_separator(dest_satoshis),
-                format_without_rounding(satoshis_to_btc(dest_satoshis)),
-                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
-                ))
+            puts("Sorry, after transaction fees there's not (quite) enough funds to send %s. Would you like to send the max you can instead?" % (
+                format_crypto_units(
+                    input_quantity=dest_satoshis,
+                    input_type='satoshi',
+                    output_type=UNIT_CHOICE,
+                    coin_symbol=coin_symbol,
+                    print_cs=True,
+                )))
             if confirm(user_prompt=DEFAULT_PROMPT, default=False):
                 return send_funds(
                         wallet_obj=wallet_obj,
                         destination_address=destination_address,
                         dest_satoshis=-1,  # sweep
+                        tx_preference=tx_preference,
                         )
             else:
                 puts(colored.red('Transaction Not Broadcast!'))
@@ -510,14 +545,22 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None):
     else:
         dest_satoshis_to_display = dest_satoshis
 
-    CONF_TEXT = "Send %s satoshis (%s %s) to %s with a fee of %s satoshis (%s %s), which is %s%% of the amount you're sending?" % (
-            format_with_k_separator(dest_satoshis_to_display),
-            format_without_rounding(satoshis_to_btc(dest_satoshis_to_display)),
-            COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+    CONF_TEXT = "Send %s to %s with a fee of %s, which is %s%% of the amount you're sending?" % (
+            format_crypto_units(
+                input_quantity=dest_satoshis_to_display,
+                input_type='satoshi',
+                output_type=UNIT_CHOICE,
+                coin_symbol=coin_symbol,
+                print_cs=True,
+                ),
             destination_address,
-            format_with_k_separator(unsigned_tx['tx']['fees']),
-            format_without_rounding(satoshis_to_btc(unsigned_tx['tx']['fees'])),
-            COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+            format_crypto_units(
+                input_quantity=unsigned_tx['tx']['fees'],
+                input_type='satoshi',
+                output_type=UNIT_CHOICE,
+                coin_symbol=coin_symbol,
+                print_cs=True,
+                ),
             round(100.0 * unsigned_tx['tx']['fees'] / dest_satoshis_to_display, 4),
             )
     puts(CONF_TEXT)
@@ -716,12 +759,16 @@ def print_path_info(address, path, coin_symbol, wif=None):
                 )
 
         with indent(2):
-            puts(colored.green('%s (%s) - %s satoshis (%s %s)' % (
+            puts(colored.green('%s (%s) - %s' % (
                 path,
                 address_formatted,
-                format_with_k_separator(addr_balance),
-                format_without_rounding(satoshis_to_btc(addr_balance)),
-                COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev'],
+                format_crypto_units(
+                    input_quantity=addr_balance,
+                    input_type='satoshi',
+                    output_type=UNIT_CHOICE,
+                    coin_symbol=coin_symbol,
+                    print_cs=True,
+                    ),
                 )))
     else:
         with indent(2):
@@ -754,16 +801,16 @@ def dump_all_keys_or_addrs(wallet_obj):
             show_default=True,
             )
 
-    puts('-' * 70 + '\n')
+    puts('-' * 70)
     for chain_int in (0, 1):
         for current in range(0, num_keys):
             path = "m/%d/%d" % (chain_int, current)
             if current == 0:
                 if chain_int == 0:
-                    puts('External Chain - m/0/k:')
+                    puts('\nExternal Chain - m/0/k:')
                     print_key_path_header()
                 elif chain_int == 1:
-                    puts('Internal Chain - m/1/k')
+                    puts('\nInternal Chain - m/1/k')
                     print_key_path_header()
             child_wallet = wallet_obj.get_child_for_path(path)
             if wallet_obj.private_key:
@@ -777,7 +824,7 @@ def dump_all_keys_or_addrs(wallet_obj):
                     coin_symbol=coin_symbol_from_mkey(mpub),
                     )
 
-    puts(colored.blue('You can compare this output to bip32.org'))
+    puts(colored.blue('\nYou can compare this output to bip32.org'))
 
     puts("\nNOTE: There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them. By default, BlockCypher will look 10 addresses ahead of the latest transaction or registered address on each subchain. For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15. For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's important to consider. This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
 
@@ -831,7 +878,7 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
             addr_cnt += 1
 
     if addr_cnt:
-        puts(colored.blue('You can compare this output to bip32.org'))
+        puts(colored.blue('\nYou can compare this output to bip32.org'))
     else:
         puts('No matching %s in this subset. Would you like to dump *all* %s instead?' % (
             content_str,
@@ -1041,6 +1088,12 @@ def cli():
             default='9c339f92713518492a4504c273d1d9f9',
             help='BlockCypher API Key to use. If not supplied the default will be used.',
             )
+    parser.add_argument('-u', '--units',
+            dest='units',
+            default='bit',
+            choices=UNIT_CHOICES,
+            help='Units to represent the currency in user display.',
+            )
     parser.add_argument('--version',
             dest='version',
             default=False,
@@ -1053,6 +1106,9 @@ def cli():
         global VERBOSE_MODE
         VERBOSE_MODE = True
     verbose_print('args: %s' % args)
+
+    global UNIT_CHOICE
+    UNIT_CHOICE = args.units
 
     if args.version:
         import pkg_resources

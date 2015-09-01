@@ -6,7 +6,7 @@ from clint.textui import puts, colored, indent
 from getpass import getpass
 
 from blockcypher.utils import (is_valid_address_for_coinsymbol,
-        coin_symbol_from_mkey)
+        coin_symbol_from_mkey, format_output, UNIT_CHOICES)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS, COIN_SYMBOL_LIST
 
 from bitmerchant.wallet.keys import PrivateKey
@@ -17,17 +17,6 @@ from datetime import datetime
 
 
 DEFAULT_PROMPT = '฿'
-
-
-def format_without_rounding(btc):
-    if btc:
-        return '{0:.8f}'.format(btc)
-    else:
-        return '0'
-
-
-def format_with_k_separator(satoshis):
-    return '{:,}'.format(satoshis)
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -80,6 +69,57 @@ def get_user_entropy(user_prompt=DEFAULT_PROMPT):
     return getpass('%s: ' % user_prompt)
 
 
+def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
+        default_input=None, show_default=False, quit_ok=False):
+
+    assert input_type in UNIT_CHOICES, input_type
+
+    if default_input and show_default:
+        prompt_to_use = '%s [%s]: ' % (user_prompt, default_input)
+    else:
+        prompt_to_use = '%s: ' % user_prompt
+
+    user_input = raw_input(prompt_to_use).strip()
+
+    if default_input and not user_input:
+        return int(default_input)
+
+    if quit_ok and user_input in ['q', 'Q']:
+        return user_input
+
+    try:
+        user_float = float(user_input.replace(',', ''))
+    except ValueError:
+        puts(colored.red('%s is not an integer. Please try again.' % user_input))
+        return get_crypto_qty(
+                max_num=max_num,
+                default_input=default_input,
+                show_default=show_default,
+                )
+    if user_float <= 0:
+        puts(colored.red('%s <  0. Please try again.' % (
+            format_output(user_float, output_type=input_type),
+            )))
+        return get_crypto_qty(
+                max_num=max_num,
+                default_input=default_input,
+                show_default=show_default,
+                )
+    if max_num is not None and user_float > max_num:
+        puts(colored.red('%s >  %s. Please try again.' % (
+            format_output(user_float, output_type=input_type),
+            format_output(max_num, output_type=input_type),
+            )))
+        return get_crypto_qty(
+                max_num=max_num,
+                input_type=input_type,
+                default_input=default_input,
+                show_default=show_default,
+                )
+
+    return user_float
+
+
 def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
         show_default=False, quit_ok=False):
     if default_input and show_default:
@@ -107,8 +147,8 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
                 )
     if user_int < min_int:
         puts(colored.red('%s <  %s. Please try again.' % (
-            format_with_k_separator(user_int),
-            format_with_k_separator(min_int),
+            user_int,
+            min_int,
             )))
         return get_int(
                 max_int=max_int,
@@ -118,8 +158,8 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
                 )
     if user_int > max_int:
         puts(colored.red('%s >  %s. Please try again.' % (
-            format_with_k_separator(user_int),
-            format_with_k_separator(max_int),
+            user_int,
+            max_int,
             )))
         return get_int(
                 max_int=max_int,
@@ -130,9 +170,14 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
     return user_int
 
 
-def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT):
+def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
+
     display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
     destination_address = raw_input('%s: ' % user_prompt).strip()
+
+    if quit_ok and destination_address in ['q', 'Q']:
+        return destination_address
+
     if is_valid_address_for_coinsymbol(destination_address,
             coin_symbol=coin_symbol):
         return destination_address
@@ -179,7 +224,7 @@ def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
     return ACTIVE_COIN_SYMBOL_LIST[coin_symbol_int-1]
 
 
-def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
+def txn_preference_chooser(user_prompt=DEFAULT_PROMPT):
     puts('How quickly do you want this transaction to confirm? The higher the miner preference, the higher the transaction fee.')
     TXN_PREFERENCES = (
             ('high', '1-2 blocks to confirm'),
@@ -194,7 +239,7 @@ def txn_preference_chooser(user_prompt=DEFAULT_PROMPT, default_input='1'):
     choice_int = choice_prompt(
             user_prompt=user_prompt,
             acceptable_responses=range(1, len(TXN_PREFERENCES)+1),
-            default_input=default_input,
+            default_input='1',  # high pref
             show_default=True,
             )
     return TXN_PREFERENCES[int(choice_int)-1][0]

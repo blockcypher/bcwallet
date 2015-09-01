@@ -52,10 +52,22 @@ def verify_and_fill_address_paths_from_bip32key(address_paths, master_key, netwo
                     )
             raise Exception(err_msg)
 
+        pubkeyhex = child_wallet.get_public_key_hex(compressed=True)
+
+        server_pubkeyhex = address_path.get('public')
+        if server_pubkeyhex and server_pubkeyhex != pubkeyhex:
+            err_msg = 'Client Side Verification Fail for %s on %s:\n%s != %s' % (
+                    path,
+                    master_key,
+                    pubkeyhex,
+                    server_pubkeyhex,
+                    )
+            raise Exception(err_msg)
+
         address_path_cleaned = {
             'pub_address': input_address,
             'path': path,
-            'pubkeyhex': child_wallet.get_public_key_hex(compressed=True),
+            'pubkeyhex': pubkeyhex,
             }
 
         if child_wallet.private_key:
