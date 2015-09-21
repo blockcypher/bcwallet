@@ -88,13 +88,20 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
         return user_input
 
     try:
-        user_float = float(user_input.replace(',', ''))
+        user_input_cleaned = user_input.replace(',', '')
+        user_float = float(user_input_cleaned)
     except ValueError:
-        puts(colored.red('%s is not an integer. Please try again.' % user_input))
+        if not user_input_cleaned:
+            puts(colored.red('No entry. Please enter something.'))
+        else:
+            puts(colored.red('%s is not an integer. Please try again.' % user_input))
         return get_crypto_qty(
                 max_num=max_num,
+                input_type=input_type,
+                user_prompt=user_prompt,
                 default_input=default_input,
                 show_default=show_default,
+                quit_ok=quit_ok,
                 )
     if user_float <= 0:
         puts(colored.red('%s <  0. Please try again.' % (
@@ -102,8 +109,11 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
             )))
         return get_crypto_qty(
                 max_num=max_num,
+                input_type=input_type,
+                user_prompt=user_prompt,
                 default_input=default_input,
                 show_default=show_default,
+                quit_ok=quit_ok,
                 )
     if max_num is not None and user_float > max_num:
         puts(colored.red('%s >  %s. Please try again.' % (
@@ -113,8 +123,10 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
         return get_crypto_qty(
                 max_num=max_num,
                 input_type=input_type,
+                user_prompt=user_prompt,
                 default_input=default_input,
                 show_default=show_default,
+                quit_ok=quit_ok,
                 )
 
     return user_float
@@ -175,6 +187,17 @@ def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
     display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
     destination_address = raw_input('%s: ' % user_prompt).strip()
 
+    if not destination_address:
+        err_str = 'No entry, please enter something'
+        if quit_ok:
+            err_str += " (or Q to quit)"
+        puts(colored.red(err_str))
+        return get_crypto_address(
+                coin_symbol=coin_symbol,
+                user_prompt=user_prompt,
+                quit_ok=quit_ok,
+                )
+
     if quit_ok and destination_address in ['q', 'Q']:
         return destination_address
 
@@ -186,6 +209,7 @@ def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
         return get_crypto_address(
                 coin_symbol=coin_symbol,
                 user_prompt=user_prompt,
+                quit_ok=quit_ok,
                 )
 
 

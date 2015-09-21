@@ -34,6 +34,7 @@ import traceback
 
 from tzlocal import get_localzone
 
+from collections import OrderedDict
 
 # Globals that can be overwritten at startup
 VERBOSE_MODE = False
@@ -154,16 +155,17 @@ def get_addresses_on_both_chains(wallet_obj, used=None, zero_balance=None):
 
     chains_address_paths_cleaned = []
     for chain in wallet_addresses['chains']:
-        chain_address_paths = verify_and_fill_address_paths_from_bip32key(
-                address_paths=chain['chain_addresses'],
-                master_key=master_key,
-                network=guess_network_from_mkey(mpub),
-                )
-        chain_address_paths_cleaned = {
-                'index': chain['index'],
-                'chain_addresses': chain_address_paths,
-                }
-        chains_address_paths_cleaned.append(chain_address_paths_cleaned)
+        if chain['chain_addresses']:
+            chain_address_paths = verify_and_fill_address_paths_from_bip32key(
+                    address_paths=chain['chain_addresses'],
+                    master_key=master_key,
+                    network=guess_network_from_mkey(mpub),
+                    )
+            chain_address_paths_cleaned = {
+                    'index': chain['index'],
+                    'chain_addresses': chain_address_paths,
+                    }
+            chains_address_paths_cleaned.append(chain_address_paths_cleaned)
 
     return chains_address_paths_cleaned
 
@@ -316,9 +318,8 @@ def display_recent_txs(wallet_obj):
     if not txs:
         puts('No Transactions')
 
+    txs_cleaned = OrderedDict()
     for tx in txs:
-        # Logic copied from block explorer
-        # templates/address_overview.html
         if tx.get('received'):
             tx_time = tx.get('received')
         else:
@@ -326,26 +327,35 @@ def display_recent_txs(wallet_obj):
 
         satoshis = tx.get('value', 0)
 
-        # HACK!
+        # Logic copied from block explorer in templates/address_overview.html
         if tx.get('tx_input_n') >= 0:
-            action_str = 'sent'
-            sign_str = '-'
-        else:
-            action_str = 'received'
-            sign_str = '+'
+            satoshis *= -1
 
+        tx_hash = tx.get('tx_hash')
+
+        if tx_hash in txs_cleaned:
+            txs_cleaned[tx_hash]['txs_satoshis_list'].append(satoshis)
+
+        else:
+            txs_cleaned[tx_hash] = {
+                    'txs_satoshis_list': [satoshis, ],
+                    'tx_time': tx_time
+                    }
+
+    for tx_hash, tx_object in txs_cleaned.iteritems():
+        net_satoshis_tx = sum(tx_object['txs_satoshis_list'])
         puts(colored.green('%s: %s%s %s in TX hash %s' % (
-            tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
-            sign_str,
+            tx_object['tx_time'].astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
+            '+' if net_satoshis_tx > 0 else '',
             format_crypto_units(
-                input_quantity=satoshis,
+                input_quantity=net_satoshis_tx,
                 input_type=UNIT_CHOICE,
                 output_type=UNIT_CHOICE,
                 coin_symbol=coin_symbol_from_mkey(mpub),
                 print_cs=True,
                 ),
-            action_str,
-            tx.get('tx_hash'),
+            'received' if net_satoshis_tx > 0 else 'sent',
+            tx_hash,
             )))
 
     puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
@@ -838,7 +848,7 @@ def dump_all_keys_or_addrs(wallet_obj):
 
     puts(colored.blue('\nYou can compare this output to bip32.org'))
 
-    puts("\nNOTE: There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them. By default, BlockCypher will look 10 addresses ahead of the latest transaction or registered address on each subchain. For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15. For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's important to consider. This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
+    puts("\nNOTE: There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them. By default, BlockCypher will look 10 addresses ahead of the latest transaction on each subchain. For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15. For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's important to consider. This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
 
 
 def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
@@ -1030,13 +1040,13 @@ def wallet_home(wallet_obj):
         puts('-' * 70 + '\n')
 
         if coin_symbol in ('bcy', 'btc-testnet'):
-            currency_abbrev = COIN_SYMBOL_MAPPINGS[coin_symbol]['currency_abbrev']
+            display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
             if coin_symbol == 'bcy':
                 faucet_url = 'https://accounts.blockcypher.com/blockcypher-faucet'
             elif coin_symbol == 'btc-testnet':
                 faucet_url = 'https://accounts.blockcypher.com/testnet-faucet'
             puts(colored.blue('Get free %s faucet coins at %s\n' % (
-                currency_abbrev,
+                display_shortname,
                 faucet_url,
                 )))
 
