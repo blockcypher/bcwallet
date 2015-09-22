@@ -13,8 +13,7 @@ from blockcypher import (create_hd_wallet, get_wallet_transactions,
         create_unsigned_tx, verify_unsigned_tx, get_input_addresses,
         make_tx_signatures, broadcast_signed_transaction,
         get_blockchain_overview, get_total_balance)
-from blockcypher.utils import (get_blockcypher_walletname_from_mpub,
-        coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis)
+from blockcypher.utils import (get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash)
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from .bc_utils import (guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key,
@@ -25,16 +24,14 @@ from .cl_utils import (debug_print, choice_prompt,
         get_crypto_address, get_wif_obj,
         get_crypto_qty, get_int,
         confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser,
-        first4mprv_from_mpub, print_pubwallet_notice,
+        first4mprv_from_mpub, print_pubwallet_notice, print_traversal_warning,
         print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening,
-        print_bcwallet_basic_pub_opening,
+        print_bcwallet_basic_pub_opening, print_childprivkey_warning,
         UNIT_CHOICES, BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
 
 import traceback
 
 from tzlocal import get_localzone
-
-from collections import OrderedDict
 
 # Globals that can be overwritten at startup
 VERBOSE_MODE = False
@@ -315,48 +312,28 @@ def display_recent_txs(wallet_obj):
 
     txs = wallet_details.get('unconfirmed_txrefs', []) + wallet_details.get('txrefs', [])
 
-    if not txs:
+    if txs:
+        for tx_object in flatten_txns_by_hash(txs, nesting=False):
+            if 'confirmed_at' in tx_object:
+                tx_time = tx_object['confirmed_at']
+            else:
+                tx_time = tx_object['received_at']
+            net_satoshis_tx = sum(tx_object['txns_satoshis_list'])
+            puts(colored.green('%s: %s%s %s in TX hash %s' % (
+                tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
+                '+' if net_satoshis_tx > 0 else '',
+                format_crypto_units(
+                    input_quantity=net_satoshis_tx,
+                    input_type=UNIT_CHOICE,
+                    output_type=UNIT_CHOICE,
+                    coin_symbol=coin_symbol_from_mkey(mpub),
+                    print_cs=True,
+                    ),
+                'received' if net_satoshis_tx > 0 else 'sent',
+                tx_object['tx_hash'],
+                )))
+    else:
         puts('No Transactions')
-
-    txs_cleaned = OrderedDict()
-    for tx in txs:
-        if tx.get('received'):
-            tx_time = tx.get('received')
-        else:
-            tx_time = tx.get('confirmed')
-
-        satoshis = tx.get('value', 0)
-
-        # Logic copied from block explorer in templates/address_overview.html
-        if tx.get('tx_input_n') >= 0:
-            satoshis *= -1
-
-        tx_hash = tx.get('tx_hash')
-
-        if tx_hash in txs_cleaned:
-            txs_cleaned[tx_hash]['txs_satoshis_list'].append(satoshis)
-
-        else:
-            txs_cleaned[tx_hash] = {
-                    'txs_satoshis_list': [satoshis, ],
-                    'tx_time': tx_time
-                    }
-
-    for tx_hash, tx_object in txs_cleaned.iteritems():
-        net_satoshis_tx = sum(tx_object['txs_satoshis_list'])
-        puts(colored.green('%s: %s%s %s in TX hash %s' % (
-            tx_object['tx_time'].astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
-            '+' if net_satoshis_tx > 0 else '',
-            format_crypto_units(
-                input_quantity=net_satoshis_tx,
-                input_type=UNIT_CHOICE,
-                output_type=UNIT_CHOICE,
-                coin_symbol=coin_symbol_from_mkey(mpub),
-                print_cs=True,
-                ),
-            'received' if net_satoshis_tx > 0 else 'sent',
-            tx_hash,
-            )))
 
     puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
 
@@ -808,13 +785,15 @@ def dump_all_keys_or_addrs(wallet_obj):
     mpub = wallet_obj.serialize_b58(private=False)
 
     if wallet_obj.private_key:
-        puts('How many private keys (on each chain) do you want to dump?')
+        desc_str = 'private keys'
     else:
+        desc_str = 'addresses'
         puts('Displaying Public Addresses Only')
         puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
         priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
         print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
-        puts('How many addresses (on each chain) do you want to dump?')
+
+    puts('How many %s (on each chain) do you want to dump?' % desc_str)
 
     num_keys = get_int(
             user_prompt=DEFAULT_PROMPT,
@@ -848,7 +827,7 @@ def dump_all_keys_or_addrs(wallet_obj):
 
     puts(colored.blue('\nYou can compare this output to bip32.org'))
 
-    puts("\nNOTE: There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them. By default, BlockCypher will look 10 addresses ahead of the latest transaction on each subchain. For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15. For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's important to consider. This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
+    print_traversal_warning()
 
 
 def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
@@ -876,6 +855,7 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
         puts('Displaying Public Addresses Only')
         puts('For Private Keys, please open bcwallet with your Master Private Key:\n')
         priv_to_display = '%s123...' % first4mprv_from_mpub(mpub=mpub)
+
         print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
     chain_address_objs = get_addresses_on_both_chains(
@@ -939,7 +919,7 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
         return
 
     if wallet_obj.private_key:
-        puts("\nNOTE: Do not reveal your private keys to anyone! One quirk of HD wallets is that if an attacker learns any of your non-hardened child private keys as well as your master public key then the attacker can derive all of your private keys and steal all of your funds.\n")
+        print_childprivkey_warning()
 
     if choice == '1':
         return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
