@@ -298,7 +298,7 @@ def display_recent_txs(wallet_obj):
             else:
                 tx_time = tx_object['received_at']
             net_satoshis_tx = sum(tx_object['txns_satoshis_list'])
-            puts(colored.green('%s: %s%s %s in TX hash %s' % (
+            puts(colored.green('%s: %s%s %s in TX hash %s%s' % (
                 tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
                 '+' if net_satoshis_tx > 0 else '',
                 format_crypto_units(
@@ -310,6 +310,7 @@ def display_recent_txs(wallet_obj):
                     ),
                 'received' if net_satoshis_tx > 0 else 'sent',
                 tx_object['tx_hash'],
+                '' if tx_object.get('confirmed_at') else ' (0 confirmations)',
                 )))
     else:
         puts('No Transactions')
