@@ -8,26 +8,13 @@ from clint.textui import puts, colored, indent
 
 from bitmerchant.wallet import Wallet
 
-from blockcypher import (create_hd_wallet, get_wallet_transactions,
-        get_wallet_addresses, derive_hd_address,
-        create_unsigned_tx, verify_unsigned_tx, get_input_addresses,
-        make_tx_signatures, broadcast_signed_transaction,
-        get_blockchain_overview, get_total_balance)
-from blockcypher.utils import (get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash)
+from blockcypher import create_hd_wallet, get_wallet_transactions, get_wallet_addresses, derive_hd_address, create_unsigned_tx, verify_unsigned_tx, get_input_addresses, make_tx_signatures, broadcast_signed_transaction, get_blockchain_overview, get_total_balance
+from blockcypher.utils import get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
-from .bc_utils import (guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key,
-        find_hexkeypairs_from_bip32key_bc, get_tx_url, hexkeypair_list_to_dict,
-        COIN_SYMBOL_TO_BMERCHANT_NETWORK)
+from .bc_utils import guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key, get_tx_url, hexkeypair_list_to_dict, COIN_SYMBOL_TO_BMERCHANT_NETWORK
 
-from .cl_utils import (debug_print, choice_prompt,
-        get_crypto_address, get_wif_obj,
-        get_crypto_qty, get_int,
-        confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser,
-        first4mprv_from_mpub, print_pubwallet_notice, print_traversal_warning,
-        print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening,
-        print_bcwallet_basic_pub_opening, print_childprivkey_warning,
-        UNIT_CHOICES, BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT)
+from .cl_utils import debug_print, choice_prompt, get_public_wallet_url, get_crypto_address, get_wif_obj, get_crypto_qty, get_int, confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser, first4mprv_from_mpub, print_pubwallet_notice, print_traversal_warning, print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening, print_bcwallet_basic_pub_opening, print_childprivkey_warning, UNIT_CHOICES, BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT
 
 import traceback
 
@@ -43,14 +30,6 @@ UNIT_CHOICE = ''
 def verbose_print(to_print):
     if VERBOSE_MODE:
         debug_print(to_print)
-
-
-def get_public_wallet_url(mpub):
-    # subchain indices set at 0 * 1
-    return 'https://live.blockcypher.com/%s/xpub/%s/?subchain-indices=0-1' % (
-            coin_symbol_from_mkey(mpub),
-            mpub,
-            )
 
 
 def is_connected_to_blockcypher():
@@ -314,7 +293,7 @@ def display_recent_txs(wallet_obj):
 
     if txs:
         for tx_object in flatten_txns_by_hash(txs, nesting=False):
-            if 'confirmed_at' in tx_object:
+            if tx_object.get('confirmed_at'):
                 tx_time = tx_object['confirmed_at']
             else:
                 tx_time = tx_object['received_at']
@@ -498,16 +477,22 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
     input_addresses = get_input_addresses(unsigned_tx)
     verbose_print('input_addresses')
     verbose_print(input_addresses)
-    hexkeypair_list = find_hexkeypairs_from_bip32key_bc(
-        pub_address_list=input_addresses,
-        master_key=mpriv,
-        network=guess_network_from_mkey(mpriv),
-        starting_pos=0,
-        depth=100,
-        )
-    verbose_print('hexkeypair_list:')
-    verbose_print(hexkeypair_list)
-    hexkeypair_dict = hexkeypair_list_to_dict(hexkeypair_list)
+
+    address_paths = [{'path': x['hd_path'], 'address': x['addresses'][0]} for x in unsigned_tx['tx']['inputs']]
+
+    # be sure all addresses returned
+    address_paths_filled = verify_and_fill_address_paths_from_bip32key(
+            address_paths=address_paths,
+            master_key=mpriv,
+            network=guess_network_from_mkey(mpriv),
+            )
+
+    verbose_print('adress_paths_filled:')
+    verbose_print(address_paths_filled)
+    hexkeypair_dict = hexkeypair_list_to_dict(address_paths_filled)
+
+    verbose_print('hexkeypair_dict:')
+    verbose_print(hexkeypair_dict)
 
     if len(hexkeypair_dict.keys()) != len(set(input_addresses)):
         notfound_addrs = set(input_addresses) - set(hexkeypair_dict.keys())
@@ -568,6 +553,11 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
     )
     verbose_print('Broadcast TX Details:')
     verbose_print(broadcasted_tx)
+
+    if 'errors' in broadcasted_tx:
+        puts(colored.red('TX Error(s): Tx May NOT Have Been Broadcast'))
+        for error in broadcasted_tx['errors']:
+            puts(colored.red(error['error']))
 
     tx_hash = broadcasted_tx['tx']['hash']
     tx_url = get_tx_url(

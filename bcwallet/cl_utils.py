@@ -290,6 +290,14 @@ def confirm(user_prompt=DEFAULT_PROMPT, default=None):
         return confirm(user_prompt=user_prompt, default=default)
 
 
+def get_public_wallet_url(mpub):
+    # subchain indices set at 0 * 1
+    return 'https://live.blockcypher.com/%s/xpub/%s/?subchain-indices=0-1' % (
+            coin_symbol_from_mkey(mpub),
+            mpub,
+            )
+
+
 # TODO: move to blockcypher python library
 def first4mprv_from_mpub(mpub):
     coin_symbol = coin_symbol_from_mkey(mkey=mpub)
