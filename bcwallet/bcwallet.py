@@ -9,7 +9,7 @@ from clint.textui import puts, colored, indent
 from bitmerchant.wallet import Wallet
 
 from blockcypher import create_hd_wallet, get_wallet_transactions, get_wallet_addresses, derive_hd_address, create_unsigned_tx, verify_unsigned_tx, get_input_addresses, make_tx_signatures, broadcast_signed_transaction, get_blockchain_overview, get_total_balance
-from blockcypher.utils import get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash
+from blockcypher.utils import get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash, get_curr_symbol
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
 from .bc_utils import guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key, get_tx_url, hexkeypair_list_to_dict, COIN_SYMBOL_TO_BMERCHANT_NETWORK
@@ -366,7 +366,10 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
                     coin_symbol=coin_symbol,
                     print_cs=True,
                     ),
-                UNIT_CHOICE,
+                get_curr_symbol(
+                        coin_symbol=coin_symbol,
+                        output_type=UNIT_CHOICE,
+                        ),
                 )
         puts(VALUE_PROMPT)
         dest_crypto_qty = get_crypto_qty(
