@@ -213,14 +213,18 @@ def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
                 )
 
 
-def get_wif_obj(network, user_prompt=DEFAULT_PROMPT):
+def get_wif_obj(network, user_prompt=DEFAULT_PROMPT, quit_ok=False):
 
-    wif = raw_input('%s: ' % user_prompt).strip()
+    user_input = raw_input('%s: ' % user_prompt).strip()
+
+    if quit_ok and user_input in ['q', 'Q']:
+        return False
+
     try:
-        return PrivateKey.from_wif(wif, network=network)
+        return PrivateKey.from_wif(user_input, network=network)
     except Exception:
-        puts(colored.red('Invalid WIF `%s`, Please Try Again' % wif))
-        return get_wif_obj(network=network, user_prompt=user_prompt)
+        puts(colored.red('Invalid WIF `%s`, Please Try Again' % user_input))
+        return get_wif_obj(network=network, user_prompt=user_prompt, quit_ok=quit_ok)
 
 
 def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):

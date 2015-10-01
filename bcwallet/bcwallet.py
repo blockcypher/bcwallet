@@ -68,7 +68,7 @@ def display_balance_info(wallet_obj, verbose=False):
     balance_str = 'Balance: %s' % (
             format_crypto_units(
                 input_quantity=wallet_details['final_balance'],
-                input_type=UNIT_CHOICE,
+                input_type='satoshi',
                 output_type=UNIT_CHOICE,
                 coin_symbol=coin_symbol,
                 print_cs=True,
@@ -79,7 +79,7 @@ def display_balance_info(wallet_obj, verbose=False):
                 '+' if wallet_details['unconfirmed_balance'] else '',  # hack
                 format_crypto_units(
                     input_quantity=wallet_details['unconfirmed_balance'],
-                    input_type=UNIT_CHOICE,
+                    input_type='satoshi',
                     output_type=UNIT_CHOICE,
                     print_cs=True,
                     coin_symbol=coin_symbol,
@@ -303,7 +303,7 @@ def display_recent_txs(wallet_obj):
                 '+' if net_satoshis_tx > 0 else '',
                 format_crypto_units(
                     input_quantity=net_satoshis_tx,
-                    input_type=UNIT_CHOICE,
+                    input_type='satoshi',
                     output_type=UNIT_CHOICE,
                     coin_symbol=coin_symbol_from_mkey(mpub),
                     print_cs=True,
@@ -318,7 +318,7 @@ def display_recent_txs(wallet_obj):
     puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
 
 
-def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_preference=None):
+def send_funds(wallet_obj, change_address=None, destination_address=None, dest_satoshis=None, tx_preference=None):
     if not USER_ONLINE:
         puts(colored.red('Blockcypher connection needed to fetch unspents and broadcast signed transaction.'))
         puts(colored.red('You may dump all your addresses and private keys while offline by selecting option 0 on the home screen.'))
@@ -404,10 +404,11 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
         change_address = None
     else:
         sweep_funds = False
-        change_address = get_unused_change_addresses(
-                wallet_obj=wallet_obj,
-                num_addrs=1,
-                )[0]['pub_address']
+        if not change_address:
+            change_address = get_unused_change_addresses(
+                    wallet_obj=wallet_obj,
+                    num_addrs=1,
+                    )[0]['pub_address']
 
     if not tx_preference:
         tx_preference = txn_preference_chooser(user_prompt=DEFAULT_PROMPT)
@@ -448,6 +449,7 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
             if confirm(user_prompt=DEFAULT_PROMPT, default=False):
                 return send_funds(
                         wallet_obj=wallet_obj,
+                        change_address=change_address,
                         destination_address=destination_address,
                         dest_satoshis=-1,  # sweep
                         tx_preference=tx_preference,
@@ -562,6 +564,7 @@ def send_funds(wallet_obj, destination_address=None, dest_satoshis=None, tx_pref
         puts(colored.red('TX Error(s): Tx May NOT Have Been Broadcast'))
         for error in broadcasted_tx['errors']:
             puts(colored.red(error['error']))
+        return
 
     tx_hash = broadcasted_tx['tx']['hash']
     tx_url = get_tx_url(
@@ -624,7 +627,10 @@ def sweep_funds_from_privkey(wallet_obj):
     network = guess_network_from_mkey(mpub)
 
     puts('Enter a private key (in WIF format) to send from:')
-    wif_obj = get_wif_obj(network=network, user_prompt=DEFAULT_PROMPT)
+    wif_obj = get_wif_obj(network=network, user_prompt=DEFAULT_PROMPT, quit_ok=True)
+
+    if not wif_obj:
+        return
 
     pkey_addr = wif_obj.get_public_key().to_address(compressed=True)
 
@@ -1204,7 +1210,7 @@ def invoke_cli():
         sys.exit()
     except Exception as e:
         puts(colored.red('\nBad Robot! Quitting on Unexpected Error:\n%s' % e))
-        puts('\nHere are the details to share with the developer for a bug report')
+        puts('\nHere are the details to share with the developer for a bug report:')
         puts(colored.yellow(traceback.format_exc()))
         sys.exit()
 
