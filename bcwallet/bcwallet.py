@@ -8,7 +8,7 @@ from clint.textui import puts, colored, indent
 
 from bitmerchant.wallet import Wallet
 
-from blockcypher import create_hd_wallet, get_wallet_transactions, get_wallet_addresses, derive_hd_address, create_unsigned_tx, verify_unsigned_tx, get_input_addresses, make_tx_signatures, broadcast_signed_transaction, get_blockchain_overview, get_total_balance
+from blockcypher import create_hd_wallet, get_wallet_transactions, get_wallet_addresses, get_wallet_balance, derive_hd_address, create_unsigned_tx, verify_unsigned_tx, get_input_addresses, make_tx_signatures, broadcast_signed_transaction, get_blockchain_overview, get_total_balance
 from blockcypher.utils import get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash, get_curr_symbol
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
@@ -57,7 +57,7 @@ def display_balance_info(wallet_obj, verbose=False):
 
     coin_symbol = coin_symbol_from_mkey(mpub)
 
-    wallet_details = get_wallet_transactions(
+    wallet_details = get_wallet_balance(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
             coin_symbol=coin_symbol,
