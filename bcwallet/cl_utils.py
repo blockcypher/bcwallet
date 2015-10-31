@@ -85,7 +85,7 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
         return int(default_input)
 
     if quit_ok and user_input in ['q', 'Q']:
-        return user_input
+        return False
 
     try:
         user_input_cleaned = user_input.replace(',', '')
@@ -145,7 +145,7 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
         return int(default_input)
 
     if quit_ok and user_input in ['q', 'Q']:
-        return user_input
+        return False
 
     try:
         user_int = int(user_input.replace(',', ''))
@@ -199,7 +199,7 @@ def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
                 )
 
     if quit_ok and destination_address in ['q', 'Q']:
-        return destination_address
+        return False
 
     if is_valid_address_for_coinsymbol(destination_address,
             coin_symbol=coin_symbol):
@@ -227,7 +227,7 @@ def get_wif_obj(network, user_prompt=DEFAULT_PROMPT, quit_ok=False):
         return get_wif_obj(network=network, user_prompt=user_prompt, quit_ok=quit_ok)
 
 
-def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
+def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT, quit_ok=True):
     ACTIVE_COIN_SYMBOL_LIST = [x for x in COIN_SYMBOL_LIST if x != 'uro']
     for cnt, coin_symbol_choice in enumerate(ACTIVE_COIN_SYMBOL_LIST):
         with indent(2):
@@ -247,9 +247,13 @@ def coin_symbol_chooser(user_prompt=DEFAULT_PROMPT):
             max_int=len(ACTIVE_COIN_SYMBOL_LIST),
             default_input=default_input,
             show_default=show_default,
+            quit_ok=quit_ok,
             )
 
-    return ACTIVE_COIN_SYMBOL_LIST[coin_symbol_int-1]
+    if not coin_symbol_int:
+        return False
+    else:
+        return ACTIVE_COIN_SYMBOL_LIST[coin_symbol_int-1]
 
 
 def txn_preference_chooser(user_prompt=DEFAULT_PROMPT):
@@ -325,7 +329,7 @@ def print_bcwallet_basic_priv_opening(priv_to_display):
         puts(colored.magenta('$ bcwallet --wallet=%s\n' % priv_to_display))
 
 
-BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your wallet (perhaps to hide it from your bash history and/or encrypt your master private key):\n"
+BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your wallet (you could modify this to hide your wallet from your bash history and/or store it in an encrypted file):\n"
 
 
 def print_bcwallet_piped_priv_opening(priv_to_display):

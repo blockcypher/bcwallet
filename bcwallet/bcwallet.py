@@ -234,7 +234,7 @@ def display_new_receiving_addresses(wallet_obj):
             quit_ok=True,
             )
 
-    if num_addrs in ('q', 'Q'):
+    if num_addrs is False:
         return
 
     verbose_print('num_addrs:\n%s' % num_addrs)
@@ -298,6 +298,15 @@ def display_recent_txs(wallet_obj):
             else:
                 tx_time = tx_object['received_at']
             net_satoshis_tx = sum(tx_object['txns_satoshis_list'])
+            conf_str = ''
+            if tx_object.get('confirmed_at'):
+                if tx_object.get('confirmations'):
+                    if tx_object.get('confirmations') <= 6:
+                        conf_str = ' (%s confirmations)' % tx_object.get('confirmations')
+                    else:
+                        conf_str = ' (6+ confirmations)'
+                else:
+                    conf_str = ' (0 confirmations)'
             puts(colored.green('%s: %s%s %s in TX hash %s%s' % (
                 tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
                 '+' if net_satoshis_tx > 0 else '',
@@ -310,7 +319,7 @@ def display_recent_txs(wallet_obj):
                     ),
                 'received' if net_satoshis_tx > 0 else 'sent',
                 tx_object['tx_hash'],
-                '' if tx_object.get('confirmed_at') else ' (0 confirmations)',
+                conf_str,
                 )))
     else:
         puts('No Transactions')
@@ -353,7 +362,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
         display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
         puts('What %s address do you want to send to?' % display_shortname)
         destination_address = get_crypto_address(coin_symbol=coin_symbol, quit_ok=True)
-        if destination_address in ('q', 'Q'):
+        if destination_address is False:
             puts(colored.red('Transaction Not Broadcast!'))
             return
 
@@ -382,7 +391,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
                 user_prompt=DEFAULT_PROMPT,
                 quit_ok=True,
                 )
-        if dest_crypto_qty in ('q', 'Q'):
+        if dest_crypto_qty is False:
             puts(colored.red('Transaction Not Broadcast!'))
             return
         dest_satoshis = to_satoshis(
@@ -629,7 +638,7 @@ def sweep_funds_from_privkey(wallet_obj):
     puts('Enter a private key (in WIF format) to send from:')
     wif_obj = get_wif_obj(network=network, user_prompt=DEFAULT_PROMPT, quit_ok=True)
 
-    if not wif_obj:
+    if wif_obj is False:
         return
 
     pkey_addr = wif_obj.get_public_key().to_address(compressed=True)
@@ -800,7 +809,11 @@ def dump_all_keys_or_addrs(wallet_obj):
             max_int=10**5,
             default_input='5',
             show_default=True,
+            quit_ok=True,
             )
+
+    if num_keys is False:
+        return
 
     puts('-' * 70)
     for chain_int in (0, 1):
@@ -1030,6 +1043,9 @@ def wallet_home(wallet_obj):
                 faucet_url,
                 )))
 
+            if coin_symbol == 'btc-testnet':
+                puts('Please consider sending any unused testnet coins back to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so that we may distribute them to others.\n')
+
         puts('What do you want to do?:')
         if not USER_ONLINE:
             puts("(since you are NOT connected to BlockCypher, many choices are disabled)")
@@ -1174,6 +1190,11 @@ def cli():
         puts('Which currency do you want to create a wallet for?')
         coin_symbol = coin_symbol_chooser(user_prompt=DEFAULT_PROMPT)
         verbose_print(coin_symbol)
+
+        if not coin_symbol:
+            puts('Quitting without generating a new wallet!')
+            sys.exit()
+
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
         puts("\nLet's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency. Please bang on the keyboard for as long as you like and then hit enter. There's no reason to record this value, it cannot be used to recover your keys.")
