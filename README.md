@@ -1,4 +1,4 @@
-Use at your own risk. We recommend starting with blockcypher testnet coins free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet).
+Use at your own risk. We recommend starting with Blockcypher testnet coins (free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet)).
 
 # Installation
 
