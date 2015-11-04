@@ -305,8 +305,8 @@ def display_recent_txs(wallet_obj):
                         conf_str = ' (%s confirmations)' % tx_object.get('confirmations')
                     else:
                         conf_str = ' (6+ confirmations)'
-                else:
-                    conf_str = ' (0 confirmations)'
+            else:
+                conf_str = ' (0 confirmations!)'
             puts(colored.green('%s: %s%s %s in TX hash %s%s' % (
                 tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
                 '+' if net_satoshis_tx > 0 else '',
