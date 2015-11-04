@@ -791,6 +791,13 @@ def dump_all_keys_or_addrs(wallet_obj):
     Offline-enabled mechanism to dump addresses
     '''
 
+    print_traversal_warning()
+
+    puts('\nDo you understand this warning?')
+    if not confirm(user_prompt=DEFAULT_PROMPT, default=False):
+        puts(colored.red('Dump Cancelled!'))
+        return
+
     mpub = wallet_obj.serialize_b58(private=False)
 
     if wallet_obj.private_key:
@@ -839,8 +846,6 @@ def dump_all_keys_or_addrs(wallet_obj):
                     )
 
     puts(colored.blue('\nYou can compare this output to bip32.org'))
-
-    print_traversal_warning()
 
 
 def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
@@ -916,13 +921,13 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
     else:
         puts('Which addresses do you want?')
     with indent(2):
-        puts(colored.cyan(' 1: All (works offline) - regardless of whether they have funds to spend'))
-        puts(colored.cyan(' 2: Active - have funds to spend'))
-        puts(colored.cyan(' 3: Spent - no funds to spend (because they have been spent)'))
-        puts(colored.cyan(' 4: Unused - no funds to spend (because the address has never been used)'))
+        puts(colored.cyan(' 1: Active - have funds to spend'))
+        puts(colored.cyan(' 2: Spent - no funds to spend (because they have been spent)'))
+        puts(colored.cyan(' 3: Unused - no funds to spend (because the address has never been used)'))
+        puts(colored.cyan(' 0: All (works offline) - regardless of whether they have funds to spend'))
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
-            acceptable_responses=[1, 2, 3, 4],
+            acceptable_responses=[0, 1, 2, 3],
             default_input='1',
             show_default=True,
             quit_ok=True,
@@ -935,13 +940,13 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
         print_childprivkey_warning()
 
     if choice == '1':
-        return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
-    elif choice == '2':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=False, used=True)
-    elif choice == '3':
+    elif choice == '2':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=True, used=True)
-    elif choice == '4':
+    elif choice == '3':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=None, used=False)
+    elif choice == '0':
+        return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
 
 
 def offline_tx_chooser(wallet_obj):
