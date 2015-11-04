@@ -8,13 +8,57 @@ from clint.textui import puts, colored, indent
 
 from bitmerchant.wallet import Wallet
 
-from blockcypher import create_hd_wallet, get_wallet_transactions, get_wallet_addresses, get_wallet_balance, derive_hd_address, create_unsigned_tx, verify_unsigned_tx, get_input_addresses, make_tx_signatures, broadcast_signed_transaction, get_blockchain_overview, get_total_balance
-from blockcypher.utils import get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash, get_curr_symbol
+from blockcypher.api import create_hd_wallet
+from blockcypher.api import get_wallet_transactions
+from blockcypher.api import get_wallet_addresses
+from blockcypher.api import get_wallet_balance
+from blockcypher.api import derive_hd_address
+from blockcypher.api import create_unsigned_tx
+from blockcypher.api import verify_unsigned_tx
+from blockcypher.api import get_input_addresses
+from blockcypher.api import make_tx_signatures
+from blockcypher.api import broadcast_signed_transaction
+from blockcypher.api import get_blockchain_overview
+from blockcypher.api import get_total_balance
+
+from blockcypher.utils import get_blockcypher_walletname_from_mpub
+from blockcypher.utils import coin_symbol_from_mkey
+from blockcypher.utils import format_crypto_units
+from blockcypher.utils import from_satoshis
+from blockcypher.utils import to_satoshis
+from blockcypher.utils import flatten_txns_by_hash
+from blockcypher.utils import get_curr_symbol
+
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
-from .bc_utils import guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key, get_tx_url, hexkeypair_list_to_dict, COIN_SYMBOL_TO_BMERCHANT_NETWORK
+from .bc_utils import guess_network_from_mkey
+from .bc_utils import verify_and_fill_address_paths_from_bip32key
+from .bc_utils import get_tx_url
+from .bc_utils import hexkeypair_list_to_dict
+from .bc_utils import COIN_SYMBOL_TO_BMERCHANT_NETWORK
 
-from .cl_utils import debug_print, choice_prompt, get_public_wallet_url, get_crypto_address, get_wif_obj, get_crypto_qty, get_int, confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser, first4mprv_from_mpub, print_pubwallet_notice, print_traversal_warning, print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening, print_bcwallet_basic_pub_opening, print_childprivkey_warning, UNIT_CHOICES, BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT
+from .cl_utils import debug_print
+from .cl_utils import choice_prompt
+from .cl_utils import get_public_wallet_url
+from .cl_utils import get_crypto_address
+from .cl_utils import get_wif_obj
+from .cl_utils import get_crypto_qty
+from .cl_utils import get_int
+from .cl_utils import confirm
+from .cl_utils import get_user_entropy
+from .cl_utils import coin_symbol_chooser
+from .cl_utils import txn_preference_chooser
+from .cl_utils import first4mprv_from_mpub
+from .cl_utils import print_pubwallet_notice
+from .cl_utils import print_traversal_warning
+from .cl_utils import print_bcwallet_basic_priv_opening
+from .cl_utils import print_bcwallet_piped_priv_opening
+from .cl_utils import print_bcwallet_basic_pub_opening
+from .cl_utils import print_childprivkey_warning
+from .cl_utils import UNIT_CHOICES
+from .cl_utils import BCWALLET_PRIVPIPE_EXPLANATION
+from .cl_utils import DEFAULT_PROMPT
+from .cl_utils import EXPLAINER_COPY
 
 import traceback
 
@@ -89,7 +133,7 @@ def display_balance_info(wallet_obj, verbose=False):
     tx_string = 'Transactions: %s' % wallet_details['final_n_tx']
     if wallet_details['unconfirmed_n_tx']:
         tx_string += ' (%s unconfirmed)' % wallet_details['unconfirmed_n_tx']
-    puts(colored.green(tx_string))
+    puts(colored.green(tx_string + '\n'))
 
     return wallet_details['final_balance']
 
@@ -224,7 +268,7 @@ def display_new_receiving_addresses(wallet_obj):
 
     mpub = wallet_obj.serialize_b58(private=False)
 
-    puts('How many receiving addreses keys do you want to see (max 5)?')
+    puts('How many receiving addreses keys do you want to see (max 5 at a time)?')
     num_addrs = get_int(
             user_prompt=DEFAULT_PROMPT,
             min_int=1,
@@ -305,8 +349,8 @@ def display_recent_txs(wallet_obj):
                         conf_str = ' (%s confirmations)' % tx_object.get('confirmations')
                     else:
                         conf_str = ' (6+ confirmations)'
-                else:
-                    conf_str = ' (0 confirmations)'
+            else:
+                conf_str = ' (0 confirmations!)'
             puts(colored.green('%s: %s%s %s in TX hash %s%s' % (
                 tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
                 '+' if net_satoshis_tx > 0 else '',
@@ -360,7 +404,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if not destination_address:
         display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
-        puts('What %s address do you want to send to?' % display_shortname)
+        puts('\nWhat %s address do you want to send to?' % display_shortname)
         destination_address = get_crypto_address(coin_symbol=coin_symbol, quit_ok=True)
         if destination_address is False:
             puts(colored.red('Transaction Not Broadcast!'))
@@ -368,20 +412,22 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if not dest_satoshis:
 
-        VALUE_PROMPT = 'Your current balance is %s. How much (in %s) do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
-                format_crypto_units(
-                    input_quantity=wallet_details['final_balance'],
-                    input_type='satoshi',
-                    output_type=UNIT_CHOICE,
-                    coin_symbol=coin_symbol,
-                    print_cs=True,
-                    ),
-                get_curr_symbol(
-                        coin_symbol=coin_symbol,
-                        output_type=UNIT_CHOICE,
-                        ),
+        crypto_units = format_crypto_units(
+                input_quantity=wallet_details['final_balance'],
+                input_type='satoshi',
+                output_type=UNIT_CHOICE,
+                coin_symbol=coin_symbol,
+                print_cs=True,
                 )
-        puts(VALUE_PROMPT)
+        curr_symbol = get_curr_symbol(
+                coin_symbol=coin_symbol,
+                output_type=UNIT_CHOICE,
+                )
+        puts('\nYour current balance is %s.' % crypto_units)
+        puts('How much (in %s) do you want to send?' % curr_symbol)
+        puts('Note that due to transaction fees your full balance may not be available to send.')
+        puts('To send your full balance (less transacation fees), enter -1.')
+
         dest_crypto_qty = get_crypto_qty(
                 max_num=from_satoshis(
                     input_satoshis=wallet_details['final_balance'],
@@ -392,12 +438,17 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
                 quit_ok=True,
                 )
         if dest_crypto_qty is False:
+            # user aborted with Q
             puts(colored.red('Transaction Not Broadcast!'))
             return
-        dest_satoshis = to_satoshis(
-                input_quantity=dest_crypto_qty,
-                input_type=UNIT_CHOICE,
-                )
+
+        if dest_crypto_qty == -1:
+            dest_satoshis = -1
+        else:
+            dest_satoshis = to_satoshis(
+                    input_quantity=dest_crypto_qty,
+                    input_type=UNIT_CHOICE,
+                    )
 
     inputs = [{
             'wallet_name': wallet_name,
@@ -447,7 +498,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if 'errors' in unsigned_tx:
         if any([x.get('error', '').startswith('Not enough funds after fees') for x in unsigned_tx['errors']]):
-            puts("Sorry, after transaction fees there's not (quite) enough funds to send %s. Would you like to send the max you can instead?" % (
+            puts("Sorry, after transaction fees there's not (quite) enough funds to send %s." % (
                 format_crypto_units(
                     input_quantity=dest_satoshis,
                     input_type='satoshi',
@@ -455,6 +506,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
                     coin_symbol=coin_symbol,
                     print_cs=True,
                 )))
+            puts('Would you like to send the max you can instead?')
             if confirm(user_prompt=DEFAULT_PROMPT, default=False):
                 return send_funds(
                         wallet_obj=wallet_obj,
@@ -599,7 +651,7 @@ def generate_offline_tx(wallet_obj):
 def sign_tx_offline(wallet_obj):
 
     if wallet_obj.private_key is None:
-        puts(colored.red("bcwallet was booted using a master PUBLIC key %s so it cannot sign transactions. Please load bcwallet with your master PRIVATE key like this:"))
+        puts(colored.red("bcwallet was booted using a master PUBLIC key %s so it cannot sign transactions.\nPlease load bcwallet with your master PRIVATE key like this:"))
         priv_to_display = '%s123...' % first4mprv_from_mpub(
                 mpub=wallet_obj.serialize_b58(private=False))
         print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
@@ -611,7 +663,9 @@ def sign_tx_offline(wallet_obj):
         if USER_ONLINE:
             # double check in case we booted online and then disconnected
             if is_connected_to_blockcypher():
-                puts(colored.red("Why are you trying to sign a transaction offline while connected to the internet? This feature is for developers to spend funds on their cold wallet without exposing their private keys to an internet connected machine. If you didn't mean to enter your master PRIVATE key on an internet connected machine, you may want to consider moving your funds to a cold wallet.\n"))
+                puts(colored.red("Why are you trying to sign a transaction offline while connected to the internet?"))
+                puts(colored.red('This feature is for developers to spend funds on their cold wallet without exposing their private keys to an internet connected machine.'))
+                puts(colored.red("If you didn't mean to enter your master PRIVATE key on an internet connected machine, you may want to consider moving your funds to a cold wallet.\n"))
 
     # TODO: implement
     puts(colored.red('Feature Coming Soon'))
@@ -734,11 +788,11 @@ def sweep_funds_from_privkey(wallet_obj):
 
 
 def print_external_chain():
-    puts('\nExternal Chain - m/0/k:')
+    puts('\nReceiving Address Chain - m/0/k:')
 
 
 def print_internal_chain():
-    puts('\nInternal Chain - m/1/k')
+    puts('\nChange Address Chain - m/1/k')
 
 
 def print_key_path_header():
@@ -791,6 +845,13 @@ def dump_all_keys_or_addrs(wallet_obj):
     Offline-enabled mechanism to dump addresses
     '''
 
+    print_traversal_warning()
+
+    puts('\nDo you understand this warning?')
+    if not confirm(user_prompt=DEFAULT_PROMPT, default=False):
+        puts(colored.red('Dump Cancelled!'))
+        return
+
     mpub = wallet_obj.serialize_b58(private=False)
 
     if wallet_obj.private_key:
@@ -839,8 +900,6 @@ def dump_all_keys_or_addrs(wallet_obj):
                     )
 
     puts(colored.blue('\nYou can compare this output to bip32.org'))
-
-    print_traversal_warning()
 
 
 def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
@@ -916,13 +975,13 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
     else:
         puts('Which addresses do you want?')
     with indent(2):
-        puts(colored.cyan(' 1: All (works offline) - regardless of whether they have funds to spend'))
-        puts(colored.cyan(' 2: Active - have funds to spend'))
-        puts(colored.cyan(' 3: Spent - no funds to spend (because they have been spent)'))
-        puts(colored.cyan(' 4: Unused - no funds to spend (because the address has never been used)'))
+        puts(colored.cyan(' 1: Active - have funds to spend'))
+        puts(colored.cyan(' 2: Spent - no funds to spend (because they have been spent)'))
+        puts(colored.cyan(' 3: Unused - no funds to spend (because the address has never been used)'))
+        puts(colored.cyan(' 0: All (works offline) - regardless of whether they have funds to spend (super advanced users only)'))
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
-            acceptable_responses=[1, 2, 3, 4],
+            acceptable_responses=[0, 1, 2, 3],
             default_input='1',
             show_default=True,
             quit_ok=True,
@@ -935,13 +994,13 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
         print_childprivkey_warning()
 
     if choice == '1':
-        return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
-    elif choice == '2':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=False, used=True)
-    elif choice == '3':
+    elif choice == '2':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=True, used=True)
-    elif choice == '4':
+    elif choice == '3':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=None, used=False)
+    elif choice == '0':
+        return dump_all_keys_or_addrs(wallet_obj=wallet_obj)
 
 
 def offline_tx_chooser(wallet_obj):
@@ -998,16 +1057,16 @@ def send_chooser(wallet_obj):
 
 def wallet_home(wallet_obj):
     '''
-    Loaded on bootup (and loops until quitting)
+    Loaded on bootup (and stays in while loop until quitting)
     '''
     mpub = wallet_obj.serialize_b58(private=False)
 
     if wallet_obj.private_key is None:
         print_pubwallet_notice(mpub=mpub)
     else:
-        puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
-        puts("If you like, you can always open your wallet in PUBLIC key mode like this:\n")
         print_bcwallet_basic_pub_opening(mpub=mpub)
+
+    puts('Note: you can quit/cancel any input by entering "q" at the prompt.')
 
     coin_symbol = coin_symbol_from_mkey(mpub)
     if USER_ONLINE:
@@ -1044,7 +1103,7 @@ def wallet_home(wallet_obj):
                 )))
 
             if coin_symbol == 'btc-testnet':
-                puts('Please consider sending any unused testnet coins back to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so that we may distribute them to others.\n')
+                puts('Please consider sending any unused testnet coins back to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so we can distribute them to others.\n')
 
         puts('What do you want to do?:')
         if not USER_ONLINE:
@@ -1085,13 +1144,7 @@ def wallet_home(wallet_obj):
 def cli():
 
     parser = argparse.ArgumentParser(
-        description='''
-    Simple BIP32 HD cryptocurrecy command line wallet supporting Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher testnet.
-
-    Keys are generated from the seed and transactions are signed locally for trustless use.
-    The seed is not stored locally, the app is booted with the user supplying the master key.
-    Blockchain heavy lifting powered by BlockCypher.
-    ''')
+            description='''Simple BIP32 HD cryptocurrecy command line wallet. Here's what makes bcwallet unique: ''' + ' '.join(EXPLAINER_COPY))
     parser.add_argument('-w', '--wallet',
             dest='wallet',
             default='',
@@ -1159,7 +1212,13 @@ def cli():
     if is_connected_to_blockcypher():
         USER_ONLINE = True
 
-    puts(colored.green("\nWelcome to bcwallet!\n"))
+    puts("\nWelcome to bcwallet!")
+
+    puts("\nHere's what makes bcwallet unique:")
+    with indent(2):
+        for explainer_sentence in EXPLAINER_COPY:
+            puts('- ' + explainer_sentence)
+    puts()
 
     if wallet:
         network = guess_network_from_mkey(wallet)
@@ -1183,7 +1242,7 @@ def cli():
             puts(colored.red("Invalid wallet entry: %s" % wallet))
 
     else:
-        puts("You've opened your wallet without specifying a master public or master private key, which you can do like this:\n")
+        puts("You've opened your HD wallet without specifying a master public or master private key, which you can do like this:\n")
         print_bcwallet_basic_priv_opening(priv_to_display='xpriv123...')
 
         puts("Let's generate a new master private key (locally) for you to use.\n")
@@ -1197,7 +1256,9 @@ def cli():
 
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
-        puts("\nLet's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency. Please bang on the keyboard for as long as you like and then hit enter. There's no reason to record this value, it cannot be used to recover your keys.")
+        puts("\nLet's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency.")
+        puts("Please bang on the keyboard for as long as you like and then hit enter.")
+        puts("There's no reason to record this value, it cannot be used to recover your keys.")
         extra_entropy = get_user_entropy(user_prompt='฿ (optional)')
 
         verbose_print(extra_entropy)

@@ -1,10 +1,12 @@
-from bitmerchant.network import (BitcoinMainNet, BitcoinTestNet,
-        LitecoinMainNet, DogecoinMainNet, BlockCypherTestNet)
+from bitmerchant.network import BitcoinMainNet
+from bitmerchant.network import BitcoinTestNet
+from bitmerchant.network import LitecoinMainNet
+from bitmerchant.network import DogecoinMainNet
+from bitmerchant.network import BlockCypherTestNet
 
 from bitmerchant.wallet import Wallet
 
-from blockcypher.utils import (is_valid_coin_symbol, is_valid_hash,
-        coin_symbol_from_mkey)
+from blockcypher.utils import is_valid_coin_symbol, is_valid_hash, coin_symbol_from_mkey
 
 # collection of blockchain/crypto utilities and helper methods
 
