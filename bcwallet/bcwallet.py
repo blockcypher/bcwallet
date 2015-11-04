@@ -1137,7 +1137,7 @@ def cli():
     Simple BIP32 HD cryptocurrecy command line wallet supporting Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher testnet.
 
     Keys are generated from the seed and transactions are signed locally for trustless use.
-    The seed is not stored locally, the app is booted with the user supplying the master key.
+    The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.
     Blockchain heavy lifting powered by BlockCypher.
     ''')
     parser.add_argument('-w', '--wallet',
@@ -1231,7 +1231,7 @@ def cli():
             puts(colored.red("Invalid wallet entry: %s" % wallet))
 
     else:
-        puts("You've opened your wallet without specifying a master public or master private key, which you can do like this:\n")
+        puts("You've opened your HD wallet without specifying a master public or master private key, which you can do like this:\n")
         print_bcwallet_basic_priv_opening(priv_to_display='xpriv123...')
 
         puts("Let's generate a new master private key (locally) for you to use.\n")

@@ -313,15 +313,15 @@ def first4mprv_from_mpub(mpub):
 
 
 def print_bcwallet_basic_pub_opening(mpub):
-    puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
-    puts("If you like, you can always open your wallet in PUBLIC key mode like this:\n")
+    puts("You've opened your HD wallet in PRIVATE key mode, so you CAN sign transactions.")
+    puts("If you like, you can always open your HD wallet in PUBLIC key mode like this:\n")
     with indent(2):
         puts(colored.magenta('$ bcwallet --wallet=%s\n' % mpub))
 
 
 def print_pubwallet_notice(mpub):
-    puts("You've opened your wallet in PUBLIC key mode, so you CANNOT sign transactions.")
-    puts("To sign transactions, open your wallet in private key mode like this:\n")
+    puts("You've opened your HD wallet in PUBLIC key mode, so you CANNOT sign transactions.")
+    puts("To sign transactions, open your HD wallet in private key mode like this:\n")
     priv_to_display = first4mprv_from_mpub(mpub=mpub) + '...'
     print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
@@ -331,7 +331,7 @@ def print_bcwallet_basic_priv_opening(priv_to_display):
         puts(colored.magenta('$ bcwallet --wallet=%s\n' % priv_to_display))
 
 
-BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your wallet (you could modify this to hide your wallet from your bash history and/or store it in an encrypted file):\n"
+BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet (you could modify this to hide your HD wallet from your bash history and/or store it in an encrypted file):\n"
 
 
 def print_bcwallet_piped_priv_opening(priv_to_display):
