@@ -971,7 +971,7 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
         puts(colored.cyan(' 1: Active - have funds to spend'))
         puts(colored.cyan(' 2: Spent - no funds to spend (because they have been spent)'))
         puts(colored.cyan(' 3: Unused - no funds to spend (because the address has never been used)'))
-        puts(colored.cyan(' 0: All (works offline) - regardless of whether they have funds to spend'))
+        puts(colored.cyan(' 0: All (works offline) - regardless of whether they have funds to spend (super advanced users only)'))
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
             acceptable_responses=[0, 1, 2, 3],
