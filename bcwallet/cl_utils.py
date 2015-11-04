@@ -346,8 +346,15 @@ def print_bcwallet_piped_priv_opening(priv_to_display):
 
 
 def print_childprivkey_warning():
-        puts("\nNOTE: Do not reveal your private keys to anyone! One quirk of HD wallets is that if an attacker learns any of your non-hardened child private keys as well as your master public key then the attacker can derive all of your private keys and steal all of your funds.\n")
+        puts("\nNOTE:")
+        puts("Do not reveal your private keys to anyone!")
+        puts("One quirk of HD wallets is that if an attacker learns any of your non-hardened child private keys as well as your master public key then the attacker can derive all of your private keys and steal all of your funds.""")
 
 
 def print_traversal_warning():
-    puts("\nNOTE: There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them. By default, BlockCypher will look 10 addresses ahead of the latest transaction on each subchain. For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15. For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's essential to understand. This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
+    puts("\nNOTE:")
+    puts("There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them.")
+    puts("By default, BlockCypher will look 10 addresses ahead of the latest transaction on each subchain.")
+    puts("For example, if the transaction that has traversed furthest on the internal chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15.")
+    puts("For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's essential to understand.")
+    puts("This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")

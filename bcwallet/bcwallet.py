@@ -404,7 +404,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if not destination_address:
         display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
-        puts('What %s address do you want to send to?' % display_shortname)
+        puts('\nWhat %s address do you want to send to?' % display_shortname)
         destination_address = get_crypto_address(coin_symbol=coin_symbol, quit_ok=True)
         if destination_address is False:
             puts(colored.red('Transaction Not Broadcast!'))
@@ -412,7 +412,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if not dest_satoshis:
 
-        VALUE_PROMPT = 'Your current balance is %s. How much (in %s) do you want to send? Note that due to transaction fees your full balance may not be available to send.' % (
+        VALUE_PROMPT = '\nYour current balance is %s.\nHow much (in %s) do you want to send?\nNote that due to transaction fees your full balance may not be available to send.' % (
                 format_crypto_units(
                     input_quantity=wallet_details['final_balance'],
                     input_type='satoshi',
@@ -491,7 +491,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if 'errors' in unsigned_tx:
         if any([x.get('error', '').startswith('Not enough funds after fees') for x in unsigned_tx['errors']]):
-            puts("Sorry, after transaction fees there's not (quite) enough funds to send %s. Would you like to send the max you can instead?" % (
+            puts("Sorry, after transaction fees there's not (quite) enough funds to send %s." % (
                 format_crypto_units(
                     input_quantity=dest_satoshis,
                     input_type='satoshi',
@@ -499,6 +499,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
                     coin_symbol=coin_symbol,
                     print_cs=True,
                 )))
+            puts('Would you like to send the max you can instead?')
             if confirm(user_prompt=DEFAULT_PROMPT, default=False):
                 return send_funds(
                         wallet_obj=wallet_obj,
@@ -643,7 +644,7 @@ def generate_offline_tx(wallet_obj):
 def sign_tx_offline(wallet_obj):
 
     if wallet_obj.private_key is None:
-        puts(colored.red("bcwallet was booted using a master PUBLIC key %s so it cannot sign transactions. Please load bcwallet with your master PRIVATE key like this:"))
+        puts(colored.red("bcwallet was booted using a master PUBLIC key %s so it cannot sign transactions.\nPlease load bcwallet with your master PRIVATE key like this:"))
         priv_to_display = '%s123...' % first4mprv_from_mpub(
                 mpub=wallet_obj.serialize_b58(private=False))
         print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
@@ -655,7 +656,9 @@ def sign_tx_offline(wallet_obj):
         if USER_ONLINE:
             # double check in case we booted online and then disconnected
             if is_connected_to_blockcypher():
-                puts(colored.red("Why are you trying to sign a transaction offline while connected to the internet? This feature is for developers to spend funds on their cold wallet without exposing their private keys to an internet connected machine. If you didn't mean to enter your master PRIVATE key on an internet connected machine, you may want to consider moving your funds to a cold wallet.\n"))
+                puts(colored.red("Why are you trying to sign a transaction offline while connected to the internet?"))
+                puts(colored.red('This feature is for developers to spend funds on their cold wallet without exposing their private keys to an internet connected machine.'))
+                puts(colored.red("If you didn't mean to enter your master PRIVATE key on an internet connected machine, you may want to consider moving your funds to a cold wallet.\n"))
 
     # TODO: implement
     puts(colored.red('Feature Coming Soon'))
@@ -1093,7 +1096,7 @@ def wallet_home(wallet_obj):
                 )))
 
             if coin_symbol == 'btc-testnet':
-                puts('Please consider sending any unused testnet coins back to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so that we may distribute them to others.\n')
+                puts('Please consider sending any unused testnet coins back to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so we can distribute them to others.\n')
 
         puts('What do you want to do?:')
         if not USER_ONLINE:
@@ -1245,7 +1248,9 @@ def cli():
 
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
 
-        puts("\nLet's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency. Please bang on the keyboard for as long as you like and then hit enter. There's no reason to record this value, it cannot be used to recover your keys.")
+        puts("\nLet's add some extra entropy in case you're on a fresh boot of a virtual machine, or your random number generator has been compromised by an unnamed three letter agency.")
+        puts("Please bang on the keyboard for as long as you like and then hit enter.")
+        puts("There's no reason to record this value, it cannot be used to recover your keys.")
         extra_entropy = get_user_entropy(user_prompt='฿ (optional)')
 
         verbose_print(extra_entropy)
