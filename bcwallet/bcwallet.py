@@ -8,13 +8,56 @@ from clint.textui import puts, colored, indent
 
 from bitmerchant.wallet import Wallet
 
-from blockcypher import create_hd_wallet, get_wallet_transactions, get_wallet_addresses, get_wallet_balance, derive_hd_address, create_unsigned_tx, verify_unsigned_tx, get_input_addresses, make_tx_signatures, broadcast_signed_transaction, get_blockchain_overview, get_total_balance
-from blockcypher.utils import get_blockcypher_walletname_from_mpub, coin_symbol_from_mkey, format_crypto_units, from_satoshis, to_satoshis, flatten_txns_by_hash, get_curr_symbol
+from blockcypher.api import create_hd_wallet
+from blockcypher.api import get_wallet_transactions
+from blockcypher.api import get_wallet_addresses
+from blockcypher.api import get_wallet_balance
+from blockcypher.api import derive_hd_address
+from blockcypher.api import create_unsigned_tx
+from blockcypher.api import verify_unsigned_tx
+from blockcypher.api import get_input_addresses
+from blockcypher.api import make_tx_signatures
+from blockcypher.api import broadcast_signed_transaction
+from blockcypher.api import get_blockchain_overview
+from blockcypher.api import get_total_balance
+
+from blockcypher.utils import get_blockcypher_walletname_from_mpub
+from blockcypher.utils import coin_symbol_from_mkey
+from blockcypher.utils import format_crypto_units
+from blockcypher.utils import from_satoshis
+from blockcypher.utils import to_satoshis
+from blockcypher.utils import flatten_txns_by_hash
+from blockcypher.utils import get_curr_symbol
+
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
-from .bc_utils import guess_network_from_mkey, verify_and_fill_address_paths_from_bip32key, get_tx_url, hexkeypair_list_to_dict, COIN_SYMBOL_TO_BMERCHANT_NETWORK
+from .bc_utils import guess_network_from_mkey
+from .bc_utils import verify_and_fill_address_paths_from_bip32key
+from .bc_utils import get_tx_url
+from .bc_utils import hexkeypair_list_to_dict
+from .bc_utils import COIN_SYMBOL_TO_BMERCHANT_NETWORK
 
-from .cl_utils import debug_print, choice_prompt, get_public_wallet_url, get_crypto_address, get_wif_obj, get_crypto_qty, get_int, confirm, get_user_entropy, coin_symbol_chooser, txn_preference_chooser, first4mprv_from_mpub, print_pubwallet_notice, print_traversal_warning, print_bcwallet_basic_priv_opening, print_bcwallet_piped_priv_opening, print_bcwallet_basic_pub_opening, print_childprivkey_warning, UNIT_CHOICES, BCWALLET_PRIVPIPE_EXPLANATION, DEFAULT_PROMPT
+from .cl_utils import debug_print
+from .cl_utils import choice_prompt
+from .cl_utils import get_public_wallet_url
+from .cl_utils import get_crypto_address
+from .cl_utils import get_wif_obj
+from .cl_utils import get_crypto_qty
+from .cl_utils import get_int
+from .cl_utils import confirm
+from .cl_utils import get_user_entropy
+from .cl_utils import coin_symbol_chooser
+from .cl_utils import txn_preference_chooser
+from .cl_utils import first4mprv_from_mpub
+from .cl_utils import print_pubwallet_notice
+from .cl_utils import print_traversal_warning
+from .cl_utils import print_bcwallet_basic_priv_opening
+from .cl_utils import print_bcwallet_piped_priv_opening
+from .cl_utils import print_bcwallet_basic_pub_opening
+from .cl_utils import print_childprivkey_warning
+from .cl_utils import UNIT_CHOICES
+from .cl_utils import BCWALLET_PRIVPIPE_EXPLANATION
+from .cl_utils import DEFAULT_PROMPT
 
 import traceback
 
