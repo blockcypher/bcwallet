@@ -313,6 +313,8 @@ def first4mprv_from_mpub(mpub):
 
 
 def print_bcwallet_basic_pub_opening(mpub):
+    puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
+    puts("If you like, you can always open your wallet in PUBLIC key mode like this:\n")
     with indent(2):
         puts(colored.magenta('$ bcwallet --wallet=%s\n' % mpub))
 

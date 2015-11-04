@@ -132,7 +132,7 @@ def display_balance_info(wallet_obj, verbose=False):
     tx_string = 'Transactions: %s' % wallet_details['final_n_tx']
     if wallet_details['unconfirmed_n_tx']:
         tx_string += ' (%s unconfirmed)' % wallet_details['unconfirmed_n_tx']
-    puts(colored.green(tx_string))
+    puts(colored.green(tx_string + '\n'))
 
     return wallet_details['final_balance']
 
