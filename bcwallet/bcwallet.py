@@ -224,7 +224,7 @@ def display_new_receiving_addresses(wallet_obj):
 
     mpub = wallet_obj.serialize_b58(private=False)
 
-    puts('How many receiving addreses keys do you want to see (max 5)?')
+    puts('How many receiving addreses keys do you want to see (max 5 at a time)?')
     num_addrs = get_int(
             user_prompt=DEFAULT_PROMPT,
             min_int=1,
