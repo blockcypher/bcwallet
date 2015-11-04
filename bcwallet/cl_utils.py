@@ -98,6 +98,9 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
 
     try:
         user_input_cleaned = user_input.replace(',', '')
+        if user_input_cleaned == '-1':
+            # for sweeping
+            return -1
         user_float = float(user_input_cleaned)
     except ValueError:
         if not user_input_cleaned:
@@ -113,7 +116,7 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
                 quit_ok=quit_ok,
                 )
     if user_float <= 0:
-        puts(colored.red('%s <  0. Please try again.' % (
+        puts(colored.red('%s <= 0. Please try again.' % (
             format_output(user_float, output_type=input_type),
             )))
         return get_crypto_qty(

@@ -412,20 +412,22 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
 
     if not dest_satoshis:
 
-        VALUE_PROMPT = '\nYour current balance is %s.\nHow much (in %s) do you want to send?\nNote that due to transaction fees your full balance may not be available to send.' % (
-                format_crypto_units(
-                    input_quantity=wallet_details['final_balance'],
-                    input_type='satoshi',
-                    output_type=UNIT_CHOICE,
-                    coin_symbol=coin_symbol,
-                    print_cs=True,
-                    ),
-                get_curr_symbol(
-                        coin_symbol=coin_symbol,
-                        output_type=UNIT_CHOICE,
-                        ),
+        crypto_units = format_crypto_units(
+                input_quantity=wallet_details['final_balance'],
+                input_type='satoshi',
+                output_type=UNIT_CHOICE,
+                coin_symbol=coin_symbol,
+                print_cs=True,
                 )
-        puts(VALUE_PROMPT)
+        curr_symbol = get_curr_symbol(
+                coin_symbol=coin_symbol,
+                output_type=UNIT_CHOICE,
+                )
+        puts('\nYour current balance is %s.' % crypto_units)
+        puts('How much (in %s) do you want to send?' % curr_symbol)
+        puts('Note that due to transaction fees your full balance may not be available to send.')
+        puts('To send your full balance (less transacation fees), enter -1.')
+
         dest_crypto_qty = get_crypto_qty(
                 max_num=from_satoshis(
                     input_satoshis=wallet_details['final_balance'],
@@ -436,12 +438,17 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
                 quit_ok=True,
                 )
         if dest_crypto_qty is False:
+            # user aborted with Q
             puts(colored.red('Transaction Not Broadcast!'))
             return
-        dest_satoshis = to_satoshis(
-                input_quantity=dest_crypto_qty,
-                input_type=UNIT_CHOICE,
-                )
+
+        if dest_crypto_qty == -1:
+            dest_satoshis = -1
+        else:
+            dest_satoshis = to_satoshis(
+                    input_quantity=dest_crypto_qty,
+                    input_type=UNIT_CHOICE,
+                    )
 
     inputs = [{
             'wallet_name': wallet_name,
@@ -1205,8 +1212,9 @@ def cli():
     if is_connected_to_blockcypher():
         USER_ONLINE = True
 
-    puts("\nWelcome to bcwallet!\n")
-    puts("\nHere's what makes bcwallet unique\n")
+    puts("\nWelcome to bcwallet!")
+
+    puts("\nHere's what makes bcwallet unique:")
     with indent(2):
         for explainer_sentence in EXPLAINER_COPY:
             puts('- ' + explainer_sentence)
