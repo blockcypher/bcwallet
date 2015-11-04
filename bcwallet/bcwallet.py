@@ -373,7 +373,7 @@ def display_recent_txs(wallet_obj):
 
 def send_funds(wallet_obj, change_address=None, destination_address=None, dest_satoshis=None, tx_preference=None):
     if not USER_ONLINE:
-        puts(colored.red('Blockcypher connection needed to fetch unspents and broadcast signed transaction.'))
+        puts(colored.red('BlockCypher connection needed to fetch unspents and broadcast signed transaction.'))
         puts(colored.red('You may dump all your addresses and private keys while offline by selecting option 0 on the home screen.'))
         return
 

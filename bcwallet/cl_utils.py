@@ -360,4 +360,4 @@ def print_traversal_warning():
     puts("By default, BlockCypher will look 10 addresses ahead of the latest transaction on each subchain.")
     puts("For example, if the transaction that has traversed furthest on the change address chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15.")
     puts("For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's essential to understand.")
-    puts("This feature should primarily be considered a last resource to migrate away from bcwallet if blockcypher is down.")
+    puts("This feature should primarily be considered a last resource to migrate away from bcwallet if BlockCypher is down.")
