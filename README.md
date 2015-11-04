@@ -1,4 +1,4 @@
-Use at your own risk. We recommend starting with blockcypher testnet coins free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet).
+Use at your own risk. We recommend starting with Blockcypher testnet coins (free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet)).
 
 # Installation
 
@@ -16,7 +16,7 @@ If `pip` doesn't work you can use `easy_install`, but [you really shouldn't do t
 
 A: bcwallet is:
 - *Concise and easy to audit*. This whole library is < 2k LoC, and much of that is user interface/display. It does use [a few larger libraries](https://github.com/blockcypher/bcwallet/blob/master/setup.py#L13-L17), though
-- *Does not use the file system*. No need to worry about where/how bcwallet stores your keys, since it doesn't. You pipe your master key in on bootup. Feel free to physically remove your hard drive and run bcwallet on (a live OS)[https://tails.boum.org/] if you like.
+- *Does not use the file system*. No need to worry about where/how bcwallet stores your keys, since it doesn't. You pipe your master key in on bootup. Feel free to physically remove your hard drive and run bcwallet on [a live OS](https://tails.boum.org/) if you like.
 - *Hard to mess up*. As long as you don't give away or lose your master private key, everything else is simple. Guard your master private key however you like.
 - *Trustless*. See below for specific details.
 - *Powerful*. Supports offline transaction signing, multiple crypto-currencies, automatically adjusting transaction fees (for current market conditions), allows user to specify number of blocks until a transaction will (likely) confirm, adds user entropy on key generation in case of a compromised CSPRNG, and more.
