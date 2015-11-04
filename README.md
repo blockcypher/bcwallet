@@ -1,4 +1,4 @@
-Use at your own risk. We recommend starting with Blockcypher testnet coins (free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet)).
+Use at your own risk. We recommend starting with BlockCypher testnet coins (free faucet [here](https://accounts.blockcypher.com/blockcypher-faucet)).
 
 # Installation
 
@@ -7,8 +7,13 @@ To get started:
 $ pip install bcwallet
 $ bcwallet
 ```
+If you don't have `pip` pre-installed on your machine you can install it [here](http://pip.readthedocs.org/en/stable/installing/). If for some reason `pip` doesn't work you can use `easy_install`, but [you really shouldn't do that](http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install).
 
-If `pip` doesn't work you can use `easy_install`, but [you really shouldn't do that](http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install).
+To build from source, advanced users can download the repo and run:
+```
+$ python setup.py build
+$ python setup.py install
+```
 
 # FAQs
 
@@ -66,6 +71,14 @@ $ . venv/bin/activate
 $ pip install --editable .
 $ bcwallet
 ```
+
+# Uninstallation
+
+So sad to see you go! Just enter the following and be on your way:
+```
+$ pip uninstall bcwallet
+```
+(then confirm your uninstallation at the prompt)
 
 # Acknowledgements
 
