@@ -788,11 +788,11 @@ def sweep_funds_from_privkey(wallet_obj):
 
 
 def print_external_chain():
-    puts('\nExternal Chain - m/0/k:')
+    puts('\nReceiving Address Chain - m/0/k:')
 
 
 def print_internal_chain():
-    puts('\nInternal Chain - m/1/k')
+    puts('\nChange Address Chain - m/1/k')
 
 
 def print_key_path_header():
