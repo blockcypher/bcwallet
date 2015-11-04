@@ -18,6 +18,15 @@ from datetime import datetime
 
 DEFAULT_PROMPT = '฿'
 
+BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet (you could modify this to hide your HD wallet from your bash history and/or store it in an encrypted file):\n"
+
+EXPLAINER_COPY = [
+        'Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher testnet.',
+        'Keys are generated from the seed and transactions are signed locally for trustless use.',
+        'The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.',
+        'Blockchain heavy lifting powered by BlockCypher, which leads to massive reduction in client-side code used for ease of auditing.',
+        ]
+
 
 class DateTimeEncoder(json.JSONEncoder):
     # http://stackoverflow.com/a/27058505/1754586
@@ -329,9 +338,6 @@ def print_pubwallet_notice(mpub):
 def print_bcwallet_basic_priv_opening(priv_to_display):
     with indent(4):
         puts(colored.magenta('$ bcwallet --wallet=%s\n' % priv_to_display))
-
-
-BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet (you could modify this to hide your HD wallet from your bash history and/or store it in an encrypted file):\n"
 
 
 def print_bcwallet_piped_priv_opening(priv_to_display):

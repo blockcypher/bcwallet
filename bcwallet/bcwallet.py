@@ -58,6 +58,7 @@ from .cl_utils import print_childprivkey_warning
 from .cl_utils import UNIT_CHOICES
 from .cl_utils import BCWALLET_PRIVPIPE_EXPLANATION
 from .cl_utils import DEFAULT_PROMPT
+from .cl_utils import EXPLAINER_COPY
 
 import traceback
 
@@ -1133,13 +1134,7 @@ def wallet_home(wallet_obj):
 def cli():
 
     parser = argparse.ArgumentParser(
-        description='''
-    Simple BIP32 HD cryptocurrecy command line wallet supporting Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher testnet.
-
-    Keys are generated from the seed and transactions are signed locally for trustless use.
-    The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.
-    Blockchain heavy lifting powered by BlockCypher.
-    ''')
+            description='''Simple BIP32 HD cryptocurrecy command line wallet. Here's what makes bcwallet unique: ''' + ' '.join(EXPLAINER_COPY))
     parser.add_argument('-w', '--wallet',
             dest='wallet',
             default='',
@@ -1207,7 +1202,12 @@ def cli():
     if is_connected_to_blockcypher():
         USER_ONLINE = True
 
-    puts(colored.green("\nWelcome to bcwallet!\n"))
+    puts("\nWelcome to bcwallet!\n")
+    puts("\nHere's what makes bcwallet unique\n")
+    with indent(2):
+        for explainer_sentence in EXPLAINER_COPY:
+            puts('- ' + explainer_sentence)
+    puts()
 
     if wallet:
         network = guess_network_from_mkey(wallet)
