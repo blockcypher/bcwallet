@@ -1046,16 +1046,16 @@ def send_chooser(wallet_obj):
 
 def wallet_home(wallet_obj):
     '''
-    Loaded on bootup (and loops until quitting)
+    Loaded on bootup (and stays in while loop until quitting)
     '''
     mpub = wallet_obj.serialize_b58(private=False)
 
     if wallet_obj.private_key is None:
         print_pubwallet_notice(mpub=mpub)
     else:
-        puts("You've opened your wallet in PRIVATE key mode, so you CAN sign transactions.")
-        puts("If you like, you can always open your wallet in PUBLIC key mode like this:\n")
         print_bcwallet_basic_pub_opening(mpub=mpub)
+
+    puts('Note: you can quit/cancel any input by entering "q" at the prompt.')
 
     coin_symbol = coin_symbol_from_mkey(mpub)
     if USER_ONLINE:
