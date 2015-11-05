@@ -15,7 +15,7 @@ To get started:
 
 (then follow the instructions on the screen)
 
-If you don't have `pip` pre-installed on your machine you can install it `here <http://pip.readthedocs.org/en/stable/installing/>`_. If for some reason `pip` doesn't work you can use `easy_install`, but `you really shouldn't do that <http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install>_`.
+If you don't have `pip` pre-installed on your machine you can install it `here <http://pip.readthedocs.org/en/stable/installing/>`_. If for some reason `pip` doesn't work you can use `easy_install`, but `you really shouldn't do that <http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install>`_.
 
 Note that if you use an outdated version of pip you may get a scary ``InsecurePlatformWarning`` warning installing any package (including ``bcwallet``). As always, you should upgrade your pip to the latest version before installing any new software:
 
@@ -36,8 +36,8 @@ FAQs
 
 A: bcwallet is:
 
-- **Concise and easy to audit**. This whole library is < 2k LoC, and much of that is user interface/display. It does use [a few larger libraries](https://github.com/blockcypher/bcwallet/blob/master/setup.py#L13-L17), though
-- **Does not use the file system**. No need to worry about where/how bcwallet stores your keys, since it doesn't. You pipe your master key in on bootup. Feel free to physically remove your hard drive and run bcwallet on [a live OS](https://tails.boum.org/) if you like.
+- **Concise and easy to audit**. This whole library is < 2k LoC, and much of that is user interface/display. It does use `a few larger libraries <https://github.com/blockcypher/bcwallet/blob/master/setup.py#L13-L18>`_, though.
+- **Does not use the file system**. No need to worry about where/how bcwallet stores your keys, since it doesn't. You pipe your master key in on bootup. Feel free to physically remove your hard drive and run bcwallet on `a live OS <https://tails.boum.org/>`_ if you like.
 - **Hard to mess up**. As long as you don't give away or lose your master private key, everything else is simple. Guard your master private key however you like.
 - **Trustless**. See below for specific details.
 - **Powerful**. Supports offline transaction signing, multiple crypto-currencies, automatically adjusting transaction fees (for current market conditions), allows user to specify number of blocks until a transaction will (likely) confirm, adds user entropy on key generation in case of a compromised CSPRNG, and more.
@@ -45,13 +45,13 @@ A: bcwallet is:
 
 **Q: Why is an HD wallet important?**
 
-A: The best practice in bitcoin is to `use a new address for every transaction <https://bitcoin.org/en/protect-your-privacy>_` (including the change address your wallet specifies when you send funds to someone else). This is for both personal/network privacy as well as clarity in determining who has paid you.
+A: The best practice in bitcoin is to `use a new address for every transaction <https://bitcoin.org/en/protect-your-privacy>`_ (including the change address your wallet specifies when you send funds to someone else). This is for both personal/network privacy as well as clarity in determining who has paid you.
 
 Addresses correspond to private keys and are free to create, but the private key used to create an address must be saved or those funds will be lost forever. This creates a difficult key management problem, as each transaction means you have to store a new key. If you backup your keypool today and then do a bunch of transactions tomorrow (which your wallet generates new keys for), those new keys will not be included in your original backup. You could have a diligent backup and still lose funds!
 
 All of these problems are solved with HD wallets. Just backup your master private key once and you're set forever.
 
-HD wallets are essential, and you really shouldn't use any wallet that isn't HD (<cough>blockchain.info</cough>). 
+HD wallets are essential, and you really shouldn't use any wallet that isn't HD (``<cough>blockchain.info</cough>``).
 
 **Q: Does BlockCypher ever see my private keys?**
 
@@ -75,7 +75,7 @@ A: We use a simple derivation with m/0/k for the external chain (receiving addre
 
 A: python3 is great, but but there are a few reasons why python 2 is better for this case:
 - Most operating systems comes with python2 pre-installed, not python3.
-- Python3 unicode handling causes problems, `Armin Ronacher strongly recommends python2 for command line apps <http://click.pocoo.org/4/python3/>_`
+- Python3 unicode handling causes problems, `Armin Ronacher strongly recommends python2 for command line apps <http://click.pocoo.org/4/python3/>`_
 
 **Q: Can I submit a pull request to bcwallet?**
 
@@ -108,6 +108,6 @@ Acknowledgements
 
 This wallet is built using:
 
-- BlockCypher's very powerful `bitcoin API <http://www.blockcypher.com/>_`. It supports features that other APIs don't, and not only makes this wallet possible but massively reduces the amount of client-side code written.
-- Steven Buss' very awesome `bitmerchant <https://github.com/sbuss>_` library for generating keys
-- Vitalik Buterin's `pybitcointools <https://bootstrap.pypa.io/get-pip.py_` for ecdsa signatures and decoding raw bitcoin transactions
+- BlockCypher's very powerful `bitcoin API <http://www.blockcypher.com/>`_. It supports features that other APIs don't, and not only makes this wallet possible but massively reduces the amount of client-side code written.
+- Steven Buss' very awesome `bitmerchant <https://github.com/sbuss>`_ library for generating keys
+- Vitalik Buterin's `pybitcointools <https://github.com/vbuterin/pybitcointools>`_ for ecdsa signatures and decoding raw bitcoin transactions
