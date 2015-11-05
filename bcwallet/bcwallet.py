@@ -135,6 +135,10 @@ def display_balance_info(wallet_obj, verbose=False):
         tx_string += ' (%s unconfirmed)' % wallet_details['unconfirmed_n_tx']
     puts(colored.green(tx_string + '\n'))
 
+    puts('More info:')
+    puts(colored.blue(get_public_wallet_url(mpub)))
+    puts()
+
     return wallet_details['final_balance']
 
 
@@ -368,8 +372,6 @@ def display_recent_txs(wallet_obj):
     else:
         puts('No Transactions')
 
-    puts(colored.blue('\nMore info: %s\n' % get_public_wallet_url(mpub)))
-
 
 def send_funds(wallet_obj, change_address=None, destination_address=None, dest_satoshis=None, tx_preference=None):
     if not USER_ONLINE:
@@ -423,10 +425,10 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
                 coin_symbol=coin_symbol,
                 output_type=UNIT_CHOICE,
                 )
-        puts('\nYour current balance is %s.' % crypto_units)
-        puts('How much (in %s) do you want to send?' % curr_symbol)
-        puts('Note that due to transaction fees your full balance may not be available to send.')
-        puts('To send your full balance (less transacation fees), enter -1.')
+        puts('\nHow much (in %s) do you want to send?' % curr_symbol)
+        puts('Your current balance is %s.' % crypto_units)
+        puts('Note that due to small %s network transaction fees your full balance may not be available to send.' % display_shortname)
+        puts('To send your full balance (less transaction fees), enter "-1" without the quotes.')
 
         dest_crypto_qty = get_crypto_qty(
                 max_num=from_satoshis(
@@ -1097,13 +1099,12 @@ def wallet_home(wallet_obj):
                 faucet_url = 'https://accounts.blockcypher.com/blockcypher-faucet'
             elif coin_symbol == 'btc-testnet':
                 faucet_url = 'https://accounts.blockcypher.com/testnet-faucet'
-            puts(colored.blue('Get free %s faucet coins at %s\n' % (
-                display_shortname,
-                faucet_url,
-                )))
+            puts('Get free %s faucet coins:' % display_shortname)
+            puts(colored.blue(faucet_url))
+            puts()
 
             if coin_symbol == 'btc-testnet':
-                puts('Please consider sending any unused testnet coins back to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so we can distribute them to others.\n')
+                puts('Please consider returning unused testnet coins to mwmabpJVisvti3WEP5vhFRtn3yqHRD9KNP so we can distribute them to others.\n')
 
         puts('What do you want to do?:')
         if not USER_ONLINE:
@@ -1144,7 +1145,7 @@ def wallet_home(wallet_obj):
 def cli():
 
     parser = argparse.ArgumentParser(
-            description='''Simple BIP32 HD cryptocurrecy command line wallet. Here's what makes bcwallet unique: ''' + ' '.join(EXPLAINER_COPY))
+            description='''Simple BIP32 HD cryptocurrecy command line wallet, with several unique features. ''' + ' '.join(EXPLAINER_COPY))
     parser.add_argument('-w', '--wallet',
             dest='wallet',
             default='',

@@ -21,9 +21,10 @@ DEFAULT_PROMPT = '฿'
 BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet (you could modify this to hide your HD wallet from your bash history and/or store it in an encrypted file):\n"
 
 EXPLAINER_COPY = [
-        'Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher testnet.',
+        'Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher Testnet.',
         'Keys are generated from the seed and transactions are signed locally for trustless use.',
         'The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.',
+        'Can be booted with the public key in watch-only mode, which is great for fetching transaction info to sign offline with a more secure machine.',
         'Blockchain heavy lifting powered by BlockCypher, which leads to massive reduction in client-side code used for ease of auditing.',
         ]
 
