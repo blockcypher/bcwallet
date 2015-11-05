@@ -1,7 +1,7 @@
 bcwallet
 ========
 
-Use at your own risk. We recommend starting with BlockCypher testnet coins (free faucet `here <https://accounts.blockcypher.com/blockcypher-faucet>_`).
+Use at your own risk. We recommend starting with BlockCypher testnet coins (free faucet `here <https://accounts.blockcypher.com/blockcypher-faucet>`_).
 
 Installation
 ------------
