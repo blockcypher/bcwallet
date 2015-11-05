@@ -878,6 +878,9 @@ def dump_all_keys_or_addrs(wallet_obj):
     if num_keys is False:
         return
 
+    if wallet_obj.private_key:
+        print_childprivkey_warning()
+
     puts('-' * 70)
     for chain_int in (0, 1):
         for current in range(0, num_keys):
@@ -938,6 +941,9 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
             zero_balance=zero_balance,
             )
 
+    if wallet_obj.private_key and chain_address_objs:
+        print_childprivkey_warning()
+
     addr_cnt = 0
     for chain_address_obj in chain_address_objs:
         if chain_address_obj['index'] == 0:
@@ -991,9 +997,6 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
 
     if choice in ('q', 'Q'):
         return
-
-    if wallet_obj.private_key:
-        print_childprivkey_warning()
 
     if choice == '1':
         return dump_selected_keys_or_addrs(wallet_obj=wallet_obj, zero_balance=False, used=True)
