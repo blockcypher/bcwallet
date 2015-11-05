@@ -1,7 +1,7 @@
 bcwallet
 ========
 
-Use at your own risk. We recommend starting with BlockCypher testnet coins (free faucet `here <https://accounts.blockcypher.com/blockcypher-faucet>`_).
+Use at your own risk. We recommend starting with BlockCypher testnet coins (`free faucet here <https://accounts.blockcypher.com/blockcypher-faucet>`_).
 
 Installation
 ------------
@@ -15,7 +15,7 @@ To get started:
 
 (then follow the instructions on the screen)
 
-If you don't have `pip` pre-installed on your machine you can install it `here <http://pip.readthedocs.org/en/stable/installing/>`_. If for some reason `pip` doesn't work you can use `easy_install`, but `you really shouldn't do that <http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install>`_.
+If you don't have `pip` pre-installed on your machine you can `install pip here <http://pip.readthedocs.org/en/stable/installing/>`_. If for some reason `pip` doesn't work you can use `easy_install`, but `you really shouldn't do that <http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install>`_.
 
 Note that if you use an outdated version of pip you may get a scary ``InsecurePlatformWarning`` warning installing any package (including ``bcwallet``). As always, you should upgrade your pip to the latest version before installing any new software:
 
