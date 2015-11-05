@@ -82,6 +82,7 @@ A: python3 is great, but but there are a few reasons why python 2 is better for 
 **Q: Can I submit a pull request to bcwallet?**
 
 A: Absolutely! If you'd like to edit bcwallet, here's the best way to install it on your machine in a virtual environment:
+
 .. code-block:: bash
 
     git clone https://github.com/blockcypher/bcwallet.git
