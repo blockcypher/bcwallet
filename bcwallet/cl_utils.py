@@ -21,11 +21,13 @@ DEFAULT_PROMPT = '฿'
 BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet (you could modify this to hide your HD wallet from your bash history and/or store it in an encrypted file):\n"
 
 EXPLAINER_COPY = [
-        'Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher Testnet.',
-        'Keys are generated from the seed and transactions are signed locally for trustless use.',
-        'The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.',
-        'Can be booted with the public key in watch-only mode, which is great for fetching transaction info to sign offline with a more secure machine.',
-        'Blockchain heavy lifting powered by BlockCypher, which leads to massive reduction in client-side code used for ease of auditing.',
+        ['Multi-Currency', 'Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher Testnet.'],
+        ['Nearly Trustless', 'Keys are generated from the seed and transactions are signed locally for trustless use.'],
+        ['No Key Pool', 'The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.'],
+        ['Hard to Mess Up', "As long as you don't lose or share your master private key, everything else is simple."],
+        ['Accurate Transaction Fees', 'Smart calculation lets user decide how long until their transaction will make it into a block.'],
+        ['Airgap Usage', 'Can be booted with the public key in watch-only mode, which is great for fetching transaction info to sign offline with a more secure machine.'],
+        ['Very Few LoC', 'Blockchain heavy lifting powered by BlockCypher, which leads to massive reduction in client-side code used for ease of auditing.'],
         ]
 
 

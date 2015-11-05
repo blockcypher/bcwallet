@@ -1145,7 +1145,7 @@ def wallet_home(wallet_obj):
 def cli():
 
     parser = argparse.ArgumentParser(
-            description='''Simple BIP32 HD cryptocurrecy command line wallet, with several unique features. ''' + ' '.join(EXPLAINER_COPY))
+            description='''Simple BIP32 HD cryptocurrecy command line wallet, with several unique features. ''' + ' '.join([x[1] for x in EXPLAINER_COPY]))
     parser.add_argument('-w', '--wallet',
             dest='wallet',
             default='',
@@ -1217,8 +1217,8 @@ def cli():
 
     puts("\nHere's what makes bcwallet unique:")
     with indent(2):
-        for explainer_sentence in EXPLAINER_COPY:
-            puts('- ' + explainer_sentence)
+        for bullet_point, description in EXPLAINER_COPY:
+            puts('-%s: %s' % (bullet_point, description))
     puts()
 
     if wallet:
