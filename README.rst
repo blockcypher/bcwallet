@@ -24,10 +24,12 @@ Note that if you use an outdated version of pip you may get a scary ``InsecurePl
     pip install --upgrade pip
 
 Advanced users can download the source code and build from source:
+
 .. code-block:: bash
 
     python setup.py build
     python setup.py install
+    
 
 FAQs
 ----
