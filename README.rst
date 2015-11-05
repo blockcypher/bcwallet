@@ -29,7 +29,7 @@ Advanced users can download the source code and build from source:
 
     python setup.py build
     python setup.py install
-    
+
 
 FAQs
 ----
