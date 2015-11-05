@@ -98,6 +98,7 @@ Uninstallation
 --------------
 
 So sad to see you go! Just enter the following and be on your way:
+
 .. code-block:: bash
 
     pip uninstall bcwallet
