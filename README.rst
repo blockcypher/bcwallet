@@ -76,8 +76,9 @@ A: We use a simple derivation with m/0/k for the external chain (receiving addre
 **Q: Why is this this app designed to work with python2 only?**
 
 A: python3 is great, but but there are a few reasons why python 2 is better for this case:
+
 - Most operating systems comes with python2 pre-installed, not python3.
-- Python3 unicode handling causes problems, `Armin Ronacher strongly recommends python2 for command line apps <http://click.pocoo.org/4/python3/>`_
+- Python3 unicode handling causes problems, `Armin Ronacher strongly recommends python2 for command line apps <http://click.pocoo.org/4/python3/>`_.
 
 **Q: Can I submit a pull request to bcwallet?**
 
