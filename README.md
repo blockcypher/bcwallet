@@ -9,7 +9,12 @@ $ bcwallet
 ```
 If you don't have `pip` pre-installed on your machine you can install it [here](http://pip.readthedocs.org/en/stable/installing/). If for some reason `pip` doesn't work you can use `easy_install`, but [you really shouldn't do that](http://stackoverflow.com/questions/3220404/why-use-pip-over-easy-install).
 
-To build from source, advanced users can download the repo and run:
+Note that if you use an outdated version of pip you may get a scary `InsecurePlatformWarning` warning installing any package (including `bcwallet`). As always, you should upgrade your pip to the latest version before installing any new software:
+```
+$ pip install --upgrade pip
+```
+
+Advanced users can download the source code and build from source:
 ```
 $ python setup.py build
 $ python setup.py install
