@@ -39,7 +39,7 @@ FAQs
 A: bcwallet is:
 
 - **Multi-Currency**: Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher Testnet.
-- **Nearly Trustless**: Keys are generated from the seed and transactions are signed locally for trustless use.
+- **Nearly Trustless**: Keys and signatures are generated locally for trustless use.
 - **No Key Pool**: The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.
 - **Hard to Mess Up**: As long as you don't lose or share your master private key, everything else is simple.
 - **Accurate Transaction Fees**: Smart calculation lets user decide how long until their transaction will make it into a block.
@@ -72,7 +72,7 @@ A: While BlockCypher can't steal your funds, every wallet has a security/conveni
 
 **Q: What path for key derivation do you use? BIP32 default wallet layout? BIP39? BIP44?**
 
-A: We use a simple derivation with m/0/k for the external chain (receiving addresses) and m/1/k for the internal chain (change addresses). The BIP32 default wallet layout (not that commonly implemented) and BIP44 wallets both use hardened derivation for these chains, which means your master public key is completely useless, and one core feature of bcwallet is that you can boot the wallet using just an extended *public* key (very useful for airgapping and signing transactions offline). bcwallet's simplified choice of tree traversal also makes it much harder to lose funds by losing track of them during traversal. Since after the hardening BIP32 and BIP44 are almost identical implementations, we may add support for those wallets in the future, though thye'd have to be booted with the master private key (a master public key wouldn't be able to do hardened deriviation).
+A: We use a simple derivation with m/0/k for the external chain (receiving addresses) and m/1/k for the internal chain (change addresses). BIP44 uses hardened derivation for these chains, which means your master public key is completely useless, and one core feature of bcwallet is that you can boot the wallet using just an extended *public* key (very useful for airgapping and signing transactions offline). bcwallet's simplified choice of tree traversal also makes it much harder to lose funds by losing track of them during traversal. Since after traversing to the 0th account, BIP32 and BIP44 are almost identical implementations, we may add support for those wallets in the future.
 
 
 **Q: Why is this this app designed to work with python2 only?**

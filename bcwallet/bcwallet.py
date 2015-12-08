@@ -53,10 +53,14 @@ from .cl_utils import print_pubwallet_notice
 from .cl_utils import print_traversal_warning
 from .cl_utils import print_bcwallet_basic_priv_opening
 from .cl_utils import print_bcwallet_piped_priv_opening
+from .cl_utils import print_bcwallet_piped_priv_cat_opening
 from .cl_utils import print_bcwallet_basic_pub_opening
 from .cl_utils import print_childprivkey_warning
+from .cl_utils import print_keys_not_saved
 from .cl_utils import UNIT_CHOICES
 from .cl_utils import BCWALLET_PRIVPIPE_EXPLANATION
+from .cl_utils import BCWALLET_PRIVPIPE_CAT_EXPLANATION
+from .cl_utils import BCWALLET_PIPE_ENCRYPTION_EXPLANATION
 from .cl_utils import DEFAULT_PROMPT
 from .cl_utils import EXPLAINER_COPY
 
@@ -273,6 +277,8 @@ def display_new_receiving_addresses(wallet_obj):
     mpub = wallet_obj.serialize_b58(private=False)
 
     puts('How many receiving addreses keys do you want to see (max 5 at a time)?')
+    puts('Enter "b" to go back.\n')
+
     num_addrs = get_int(
             user_prompt=DEFAULT_PROMPT,
             min_int=1,
@@ -347,28 +353,34 @@ def display_recent_txs(wallet_obj):
                 tx_time = tx_object['received_at']
             net_satoshis_tx = sum(tx_object['txns_satoshis_list'])
             conf_str = ''
+            has_confirmations = False
             if tx_object.get('confirmed_at'):
                 if tx_object.get('confirmations'):
+                    has_confirmations = True
                     if tx_object.get('confirmations') <= 6:
                         conf_str = ' (%s confirmations)' % tx_object.get('confirmations')
                     else:
                         conf_str = ' (6+ confirmations)'
             else:
                 conf_str = ' (0 confirmations!)'
-            puts(colored.green('%s: %s%s %s in TX hash %s%s' % (
-                tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
-                '+' if net_satoshis_tx > 0 else '',
-                format_crypto_units(
-                    input_quantity=net_satoshis_tx,
-                    input_type='satoshi',
-                    output_type=UNIT_CHOICE,
-                    coin_symbol=coin_symbol_from_mkey(mpub),
-                    print_cs=True,
-                    ),
-                'received' if net_satoshis_tx > 0 else 'sent',
-                tx_object['tx_hash'],
-                conf_str,
-                )))
+            print_str = '%s: %s%s %s in TX hash %s%s' % (
+                    tx_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M %Z"),
+                    '+' if net_satoshis_tx > 0 else '',
+                    format_crypto_units(
+                        input_quantity=net_satoshis_tx,
+                        input_type='satoshi',
+                        output_type=UNIT_CHOICE,
+                        coin_symbol=coin_symbol_from_mkey(mpub),
+                        print_cs=True,
+                        ),
+                    'received' if net_satoshis_tx > 0 else 'sent',
+                    tx_object['tx_hash'],
+                    conf_str,
+                    )
+            if has_confirmations:
+                puts(colored.green(print_str))
+            else:
+                puts(colored.yellow(print_str))
     else:
         puts('No Transactions')
 
@@ -407,6 +419,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
     if not destination_address:
         display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
         puts('\nWhat %s address do you want to send to?' % display_shortname)
+        puts('Enter "b" to go back.\n')
         destination_address = get_crypto_address(coin_symbol=coin_symbol, quit_ok=True)
         if destination_address is False:
             puts(colored.red('Transaction Not Broadcast!'))
@@ -428,7 +441,8 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
         puts('\nHow much (in %s) do you want to send?' % curr_symbol)
         puts('Your current balance is %s.' % crypto_units)
         puts('Note that due to small %s network transaction fees your full balance may not be available to send.' % display_shortname)
-        puts('To send your full balance (less transaction fees), enter "-1" without the quotes.')
+        puts('To send your full balance (less transaction fees), enter "-1".')
+        puts('Enter "b" to go back.\n')
 
         dest_crypto_qty = get_crypto_qty(
                 max_num=from_satoshis(
@@ -659,6 +673,9 @@ def sign_tx_offline(wallet_obj):
         print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
         puts(BCWALLET_PRIVPIPE_EXPLANATION)
         print_bcwallet_piped_priv_opening(priv_to_display=priv_to_display)
+        puts(BCWALLET_PRIVPIPE_CAT_EXPLANATION)
+        print_bcwallet_piped_priv_cat_opening()
+        puts(BCWALLET_PIPE_ENCRYPTION_EXPLANATION)
         return
 
     else:
@@ -692,6 +709,7 @@ def sweep_funds_from_privkey(wallet_obj):
     network = guess_network_from_mkey(mpub)
 
     puts('Enter a private key (in WIF format) to send from:')
+    puts('Enter "b" to go back.\n')
     wif_obj = get_wif_obj(network=network, user_prompt=DEFAULT_PROMPT, quit_ok=True)
 
     if wif_obj is False:
@@ -866,6 +884,7 @@ def dump_all_keys_or_addrs(wallet_obj):
         print_bcwallet_basic_priv_opening(priv_to_display=priv_to_display)
 
     puts('How many %s (on each chain) do you want to dump?' % desc_str)
+    puts('Enter "b" to go back.\n')
 
     num_keys = get_int(
             user_prompt=DEFAULT_PROMPT,
@@ -983,10 +1002,11 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
     else:
         puts('Which addresses do you want?')
     with indent(2):
-        puts(colored.cyan(' 1: Active - have funds to spend'))
-        puts(colored.cyan(' 2: Spent - no funds to spend (because they have been spent)'))
-        puts(colored.cyan(' 3: Unused - no funds to spend (because the address has never been used)'))
-        puts(colored.cyan(' 0: All (works offline) - regardless of whether they have funds to spend (super advanced users only)'))
+        puts(colored.cyan('1: Active - have funds to spend'))
+        puts(colored.cyan('2: Spent - no funds to spend (because they have been spent)'))
+        puts(colored.cyan('3: Unused - no funds to spend (because the address has never been used)'))
+        puts(colored.cyan('0: All (works offline) - regardless of whether they have funds to spend (super advanced users only)'))
+        puts(colored.cyan('\nb: Go Back\n'))
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
             acceptable_responses=[0, 1, 2, 3],
@@ -995,7 +1015,7 @@ def dump_private_keys_or_addrs_chooser(wallet_obj):
             quit_ok=True,
             )
 
-    if choice in ('q', 'Q'):
+    if choice is False:
         return
 
     if choice == '1':
@@ -1013,6 +1033,7 @@ def offline_tx_chooser(wallet_obj):
     puts(colored.cyan('1: Generate transaction for offline signing'))
     puts(colored.cyan('2: Sign transaction offline'))
     puts(colored.cyan('3: Broadcast transaction previously signed offline'))
+    puts(colored.cyan('\nb: Go Back\n'))
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
             acceptable_responses=range(0, 3+1),
@@ -1022,7 +1043,7 @@ def offline_tx_chooser(wallet_obj):
             )
     verbose_print('Choice: %s' % choice)
 
-    if choice in ('q', 'Q'):
+    if choice is False:
         return
     elif choice == '1':
         return generate_offline_tx(wallet_obj=wallet_obj)
@@ -1040,6 +1061,7 @@ def send_chooser(wallet_obj):
         puts(colored.cyan('1: Basic send (generate transaction, sign, & broadcast)'))
         puts(colored.cyan('2: Sweep funds into bcwallet from a private key you hold'))
         puts(colored.cyan('3: Offline transaction signing (more here)'))
+        puts(colored.cyan('\nb: Go Back\n'))
 
     choice = choice_prompt(
             user_prompt=DEFAULT_PROMPT,
@@ -1050,7 +1072,7 @@ def send_chooser(wallet_obj):
             )
     verbose_print('Choice: %s' % choice)
 
-    if choice in ('q', 'Q'):
+    if choice is False:
         return
     elif choice == '1':
         return send_funds(wallet_obj=wallet_obj)
@@ -1070,8 +1092,6 @@ def wallet_home(wallet_obj):
         print_pubwallet_notice(mpub=mpub)
     else:
         print_bcwallet_basic_pub_opening(mpub=mpub)
-
-    puts('Note: you can quit/cancel any input by entering "q" at the prompt.')
 
     coin_symbol = coin_symbol_from_mkey(mpub)
     if USER_ONLINE:
@@ -1117,12 +1137,13 @@ def wallet_home(wallet_obj):
             puts(colored.cyan('2: Show new receiving addresses'))
             puts(colored.cyan('3: Send funds (more options here)'))
 
-        if wallet_obj.private_key:
-            with indent(2):
+        with indent(2):
+            if wallet_obj.private_key:
                 puts(colored.cyan('0: Dump private keys and addresses (advanced users only)'))
-        else:
-            with indent(2):
+            else:
                 puts(colored.cyan('0: Dump addresses (advanced users only)'))
+
+            puts(colored.cyan('\nq: Quit bcwallet\n'))
 
         choice = choice_prompt(
                 user_prompt=DEFAULT_PROMPT,
@@ -1132,8 +1153,9 @@ def wallet_home(wallet_obj):
                 )
         verbose_print('Choice: %s' % choice)
 
-        if choice in ('q', 'Q'):
+        if choice is False:
             puts(colored.green('Thanks for using bcwallet!'))
+            print_keys_not_saved()
             break
         elif choice == '1':
             display_recent_txs(wallet_obj=wallet_obj)
@@ -1191,6 +1213,7 @@ def cli():
     if args.version:
         import pkg_resources
         puts(colored.green(str(pkg_resources.get_distribution("bcwallet"))))
+        puts()
         sys.exit()
 
     if sys.stdin.isatty():
@@ -1208,7 +1231,7 @@ def cli():
         verbose_print('API Key: %s' % BLOCKCYPHER_API_KEY)
         # Crude check
         if set(BLOCKCYPHER_API_KEY) - set('0123456789abcdef'):
-            puts(colored.red('Invalid API Key: %s' % BLOCKCYPHER_API_KEY))
+            puts(colored.red('Invalid API Key: %s\n' % BLOCKCYPHER_API_KEY))
             sys.exit()
 
     # Check if blockcypher is up (basically if the user's machine is online)
@@ -1255,7 +1278,7 @@ def cli():
         verbose_print(coin_symbol)
 
         if not coin_symbol:
-            puts('Quitting without generating a new wallet!')
+            puts('\nQuitting without generating a new wallet!\n')
             sys.exit()
 
         network = COIN_SYMBOL_TO_BMERCHANT_NETWORK[coin_symbol]
@@ -1282,6 +1305,10 @@ def cli():
         print_bcwallet_basic_priv_opening(priv_to_display=mpriv)
         puts(BCWALLET_PRIVPIPE_EXPLANATION)
         print_bcwallet_piped_priv_opening(priv_to_display=mpriv)
+        puts(BCWALLET_PRIVPIPE_CAT_EXPLANATION)
+        print_bcwallet_piped_priv_cat_opening()
+        puts(BCWALLET_PIPE_ENCRYPTION_EXPLANATION)
+        print_keys_not_saved()
         sys.exit()
 
 
@@ -1291,13 +1318,15 @@ def invoke_cli():
         puts(colored.red('Your version: %s' % sys.version))
     try:
         cli()
-    except KeyboardInterrupt:
-        puts(colored.red('\nAborted'))
+    except (KeyboardInterrupt, EOFError):
+        puts(colored.red('\nQuitting bcwallet...'))
+        print_keys_not_saved()
         sys.exit()
     except Exception as e:
         puts(colored.red('\nBad Robot! Quitting on Unexpected Error:\n%s' % e))
         puts('\nHere are the details to share with the developer for a bug report:')
         puts(colored.yellow(traceback.format_exc()))
+        print_keys_not_saved()
         sys.exit()
 
 if __name__ == '__main__':

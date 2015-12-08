@@ -18,11 +18,13 @@ from datetime import datetime
 
 DEFAULT_PROMPT = '฿'
 
-BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet (you could modify this to hide your HD wallet from your bash history and/or store it in an encrypted file):\n"
+BCWALLET_PRIVPIPE_EXPLANATION = "You can also pipe in your HD wallet:\n"
+BCWALLET_PRIVPIPE_CAT_EXPLANATION = "If you moved your seed to a file, you could hide your seed from your bash history:\n"
+BCWALLET_PIPE_ENCRYPTION_EXPLANATION = 'Even better, encrypt that file using gpg or opensll.'
 
 EXPLAINER_COPY = [
         ['Multi-Currency', 'Supports Bitcoin (and Testnet), Litecoin, Dogecoin, and BlockCypher Testnet.'],
-        ['Nearly Trustless', 'Keys are generated from the seed and transactions are signed locally for trustless use.'],
+        ['Nearly Trustless', 'Keys and signatures are generated locally for trustless use.'],
         ['No Key Pool', 'The seed is not stored locally, the app is booted with the user supplying the master key so the filesystem is never used.'],
         ['Hard to Mess Up', "As long as you don't lose or share your master private key, everything else is simple."],
         ['Accurate Transaction Fees', 'Smart calculation lets user decide how long until their transaction will make it into a block.'],
@@ -52,18 +54,18 @@ def choice_prompt(user_prompt=DEFAULT_PROMPT, acceptable_responses=[],
     assert len(acceptable_responses) > 0, acceptable_responses
     acceptable_responses = [str(x) for x in acceptable_responses]
 
-    if quit_ok:
-        acceptable_responses.extend(['q', 'Q'])
-
     if default_input and show_default:
         prompt_to_use = '%s [%s]: ' % (user_prompt, default_input)
     else:
         prompt_to_use = '%s: ' % user_prompt
 
-    user_input = raw_input(prompt_to_use).strip()
+    user_input = raw_input(prompt_to_use).strip().strip('"')
 
     if not user_input and default_input in acceptable_responses:
         return default_input
+
+    if quit_ok and user_input in ['q', 'Q', 'b', 'B']:
+        return False
 
     if user_input not in acceptable_responses:
         puts(colored.red('Sorry, %s is not a valid entry. Please try again.' % user_input))
@@ -91,12 +93,12 @@ def get_crypto_qty(max_num, input_type, user_prompt=DEFAULT_PROMPT,
     else:
         prompt_to_use = '%s: ' % user_prompt
 
-    user_input = raw_input(prompt_to_use).strip()
+    user_input = raw_input(prompt_to_use).strip().strip('"')
 
     if default_input and not user_input:
         return int(default_input)
 
-    if quit_ok and user_input in ['q', 'Q']:
+    if quit_ok and user_input in ['q', 'Q', 'b', 'B']:
         return False
 
     try:
@@ -154,12 +156,12 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
     else:
         prompt_to_use = '%s: ' % user_prompt
 
-    user_input = raw_input(prompt_to_use).strip()
+    user_input = raw_input(prompt_to_use).strip().strip('"')
 
     if default_input and not user_input:
         return int(default_input)
 
-    if quit_ok and user_input in ['q', 'Q']:
+    if quit_ok and user_input in ['q', 'Q', 'b', 'B']:
         return False
 
     try:
@@ -200,7 +202,7 @@ def get_int(max_int, min_int=1, user_prompt=DEFAULT_PROMPT, default_input=None,
 def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
 
     display_shortname = COIN_SYMBOL_MAPPINGS[coin_symbol]['display_shortname']
-    destination_address = raw_input('%s: ' % user_prompt).strip()
+    destination_address = raw_input('%s: ' % user_prompt).strip().strip('"')
 
     if not destination_address:
         err_str = 'No entry, please enter something'
@@ -213,14 +215,14 @@ def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
                 quit_ok=quit_ok,
                 )
 
-    if quit_ok and destination_address in ['q', 'Q']:
+    if quit_ok and destination_address in ['q', 'Q', 'b', 'B']:
         return False
 
     if is_valid_address_for_coinsymbol(destination_address,
             coin_symbol=coin_symbol):
         return destination_address
     else:
-        puts('Invalid %s address, try again' % display_shortname)
+        puts('Invalid %s address, please try again' % display_shortname)
         return get_crypto_address(
                 coin_symbol=coin_symbol,
                 user_prompt=user_prompt,
@@ -230,15 +232,15 @@ def get_crypto_address(coin_symbol, user_prompt=DEFAULT_PROMPT, quit_ok=False):
 
 def get_wif_obj(network, user_prompt=DEFAULT_PROMPT, quit_ok=False):
 
-    user_input = raw_input('%s: ' % user_prompt).strip()
+    user_input = raw_input('%s: ' % user_prompt).strip().strip('"')
 
-    if quit_ok and user_input in ['q', 'Q']:
+    if quit_ok and user_input in ['q', 'Q', 'b', 'B']:
         return False
 
     try:
         return PrivateKey.from_wif(user_input, network=network)
     except Exception:
-        puts(colored.red('Invalid WIF `%s`, Please Try Again' % user_input))
+        puts(colored.red('Invalid WIF `%s`, please try again' % user_input))
         return get_wif_obj(network=network, user_prompt=user_prompt, quit_ok=quit_ok)
 
 
@@ -351,6 +353,11 @@ def print_bcwallet_piped_priv_opening(priv_to_display):
         puts(colored.magenta('$ echo %s | bcwallet\n' % priv_to_display))
 
 
+def print_bcwallet_piped_priv_cat_opening():
+    with indent(4):
+        puts(colored.magenta('$ cat wallet_seed.txt | bcwallet\n'))
+
+
 def print_childprivkey_warning():
         puts("\nNOTE:")
         puts("Do not reveal your private keys to anyone!")
@@ -360,7 +367,14 @@ def print_childprivkey_warning():
 def print_traversal_warning():
     puts("\nNOTE:")
     puts("There are over a billion keys (and corresponding addresses) that can easily be derived from your master key, but that doesn't mean BlockCypher will automatically detect a transaction sent to any one of them.")
-    puts("By default, BlockCypher will look 10 addresses ahead of the latest transaction on each subchain.")
+    puts("By default, BlockCypher will look 10 addresses ahead of the latest transaction (or requested receiving address) on each subchain.")
     puts("For example, if the transaction that has traversed furthest on the change address chain is at m/0/5, then BlockCypher will automatically detect any transactions sent to m/0/0-m/0/15.")
     puts("For normal bcwallet users you never have to think about this, but if you're in this section manually traversing keys then it's essential to understand.")
     puts("This feature should primarily be considered a last resource to migrate away from bcwallet if BlockCypher is down.")
+
+
+def print_keys_not_saved():
+    puts()
+    puts(colored.green('User private keys intentionally never saved.'))
+    puts(colored.green('Please do not lose your seed, bcwallet intentionally has no backup!'))
+    puts()
