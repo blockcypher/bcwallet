@@ -12,7 +12,7 @@ setup(
         py_modules=['bcwallet'],
         install_requires=[
             'clint==0.4.1',
-            'blockcypher==1.0.66',
+            'blockcypher==1.0.68',
             'bitmerchant==0.1.8',
             'tzlocal==1.2',
             ],

@@ -172,7 +172,6 @@ def get_addresses_on_both_chains(wallet_obj, used=None, zero_balance=None):
     wallet_addresses = get_wallet_addresses(
             wallet_name=wallet_name,
             api_key=BLOCKCYPHER_API_KEY,
-            is_hd_wallet=True,
             used=used,
             zero_balance=zero_balance,
             coin_symbol=coin_symbol_from_mkey(mpub),
