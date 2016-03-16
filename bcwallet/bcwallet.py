@@ -2,6 +2,8 @@
 
 import sys
 import argparse
+import pkg_resources
+import traceback
 
 # just for printing
 from clint.textui import puts, colored, indent
@@ -18,8 +20,8 @@ from blockcypher.api import verify_unsigned_tx
 from blockcypher.api import get_input_addresses
 from blockcypher.api import make_tx_signatures
 from blockcypher.api import broadcast_signed_transaction
-from blockcypher.api import get_blockchain_overview
 from blockcypher.api import get_total_balance
+from blockcypher.api import get_blockchain_overview
 
 from blockcypher.utils import get_blockcypher_walletname_from_mpub
 from blockcypher.utils import coin_symbol_from_mkey
@@ -28,6 +30,7 @@ from blockcypher.utils import from_satoshis
 from blockcypher.utils import to_satoshis
 from blockcypher.utils import flatten_txns_by_hash
 from blockcypher.utils import get_curr_symbol
+from blockcypher.utils import uses_only_hash_chars
 
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS
 
@@ -64,7 +67,8 @@ from .cl_utils import BCWALLET_PIPE_ENCRYPTION_EXPLANATION
 from .cl_utils import DEFAULT_PROMPT
 from .cl_utils import EXPLAINER_COPY
 
-import traceback
+from .version_checker import get_latest_bcwallet_version
+from .version_checker import GITHUB_URL
 
 from tzlocal import get_localzone
 
@@ -503,6 +507,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
         change_address=change_address,
         preference=tx_preference,
         coin_symbol=coin_symbol,
+        api_key=BLOCKCYPHER_API_KEY,
         # will verify in the next step,
         # that way if there is an error here we can display that to user
         verify_tosigntx=False,
@@ -545,7 +550,6 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
     # Verify TX requested to sign is as expected
     tx_is_correct, err_msg = verify_unsigned_tx(
             unsigned_tx=unsigned_tx,
-            inputs=inputs,
             outputs=outputs,
             sweep_funds=sweep_funds,
             change_address=change_address,
@@ -633,6 +637,7 @@ def send_funds(wallet_obj, change_address=None, destination_address=None, dest_s
             signatures=tx_signatures,
             pubkeys=pubkeyhex_list,
             coin_symbol=coin_symbol,
+            api_key=BLOCKCYPHER_API_KEY,
     )
     verbose_print('Broadcast TX Details:')
     verbose_print(broadcasted_tx)
@@ -738,6 +743,7 @@ def sweep_funds_from_privkey(wallet_obj):
         outputs=outputs,
         change_address=None,
         coin_symbol=coin_symbol,
+        api_key=BLOCKCYPHER_API_KEY,
         # will verify in the next step,
         # that way if there is an error here we can display that to user
         verify_tosigntx=False,
@@ -756,7 +762,6 @@ def sweep_funds_from_privkey(wallet_obj):
     # Verify TX requested to sign is as expected
     tx_is_correct, err_msg = verify_unsigned_tx(
             unsigned_tx=unsigned_tx,
-            inputs=inputs,
             outputs=outputs,
             sweep_funds=True,
             change_address=None,
@@ -791,6 +796,7 @@ def sweep_funds_from_privkey(wallet_obj):
             signatures=tx_signatures,
             pubkeys=pubkeyhex_list,
             coin_symbol=coin_symbol,
+            api_key=BLOCKCYPHER_API_KEY,
     )
     verbose_print('Broadcasted TX')
     verbose_print(broadcasted_tx)
@@ -1211,7 +1217,6 @@ def cli():
     UNIT_CHOICE = args.units
 
     if args.version:
-        import pkg_resources
         puts(colored.green(str(pkg_resources.get_distribution("bcwallet"))))
         puts()
         sys.exit()
@@ -1230,14 +1235,9 @@ def cli():
         BLOCKCYPHER_API_KEY = args.bc_api_key
         verbose_print('API Key: %s' % BLOCKCYPHER_API_KEY)
         # Crude check
-        if set(BLOCKCYPHER_API_KEY) - set('0123456789abcdef'):
+        if not uses_only_hash_chars(BLOCKCYPHER_API_KEY):
             puts(colored.red('Invalid API Key: %s\n' % BLOCKCYPHER_API_KEY))
             sys.exit()
-
-    # Check if blockcypher is up (basically if the user's machine is online)
-    global USER_ONLINE
-    if is_connected_to_blockcypher():
-        USER_ONLINE = True
 
     puts("\nWelcome to bcwallet!")
 
@@ -1316,6 +1316,50 @@ def invoke_cli():
     if sys.version_info[0] != 2 or sys.version_info[1] != 7:
         puts(colored.red('Sorry, this app must be run with python 2.7 :('))
         puts(colored.red('Your version: %s' % sys.version))
+        if sys.version_info[0] == 3:
+            puts(colored.red('Please uninstall bcwallet and reinstall like this:'))
+            with indent(4):
+                puts(colored.magenta('$ pip2 install bcwallet'))
+
+    # Check if blockcypher is up (basically if the user's machine is online)
+    global USER_ONLINE
+    if is_connected_to_blockcypher():
+        USER_ONLINE = True
+
+        current_bcwallet_version = str(pkg_resources.get_distribution("bcwallet")).split()[1]
+
+        latest_bcwallet_version = None
+        try:
+            latest_bcwallet_version = get_latest_bcwallet_version()
+        except Exception as e:
+            puts(colored.red('Unable to lookup latest version number for bcwallet on GitHub'))
+            puts(colored.red('The error was:\n'))
+
+            with indent(2):
+                puts(colored.yellow(str(e)))
+
+            puts('\nHere are the details to share with the developer for a bug report: \n')
+            with indent(2):
+                puts(colored.yellow(traceback.format_exc()))
+
+            puts(colored.red('Your bcwallet version: %s' % current_bcwallet_version))
+            puts(colored.red('''Please visit the GitHub repository to confirm you're running the latest version:'''))
+            puts(colored.blue(GITHUB_URL))
+
+        if latest_bcwallet_version and latest_bcwallet_version != current_bcwallet_version:
+            puts(colored.red('WARNING: Your version of bcwallet is out of date!'))
+            puts(colored.yellow('You are running %s and the latest version is %s' % (
+                current_bcwallet_version,
+                latest_bcwallet_version,
+                )))
+            puts(colored.yellow('For security and usability, you are STRONGLY encouraged to quit and upgrade:\n'))
+            with indent(4):
+                puts(colored.magenta('$ pip install --upgrade bcwallet \n'))
+
+            puts('Are you sure you want to continue using this old version of bcwallet?')
+            if not confirm(user_prompt=DEFAULT_PROMPT, default=False):
+                sys.exit()
+
     try:
         cli()
     except (KeyboardInterrupt, EOFError):
@@ -1323,9 +1367,14 @@ def invoke_cli():
         print_keys_not_saved()
         sys.exit()
     except Exception as e:
-        puts(colored.red('\nBad Robot! Quitting on Unexpected Error:\n%s' % e))
-        puts('\nHere are the details to share with the developer for a bug report:')
-        puts(colored.yellow(traceback.format_exc()))
+        puts(colored.red('\nBad Robot!'))
+        puts(colored.red('Quitting on Unexpected Error:\n%s' % e))
+        with indent(2):
+            puts(colored.yellow(str(e)))
+
+        puts('\nHere are the details to share with the developer for a bug report: \n')
+        with indent(2):
+            puts(colored.yellow(traceback.format_exc()))
         print_keys_not_saved()
         sys.exit()
 

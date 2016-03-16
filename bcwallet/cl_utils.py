@@ -5,15 +5,18 @@
 from clint.textui import puts, colored, indent
 from getpass import getpass
 
-from blockcypher.utils import (is_valid_address_for_coinsymbol,
-        coin_symbol_from_mkey, format_output, UNIT_CHOICES)
+from blockcypher.utils import is_valid_address_for_coinsymbol
+from blockcypher.utils import coin_symbol_from_mkey
+from blockcypher.utils import format_output
+from blockcypher.utils import UNIT_CHOICES
+
 from blockcypher.constants import COIN_SYMBOL_MAPPINGS, COIN_SYMBOL_LIST
 
 from bitmerchant.wallet.keys import PrivateKey
 
-import json
-
 from datetime import datetime
+
+import json
 
 
 DEFAULT_PROMPT = '฿'
