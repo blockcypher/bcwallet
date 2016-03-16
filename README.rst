@@ -21,7 +21,9 @@ Note that if you use an outdated version of pip you may get a scary ``InsecurePl
 
 .. code-block:: bash
 
-    pip install --upgrade pip
+    pip2 install --upgrade pip
+
+If `pip2` doesn't work, try `pip` instead.
 
 Advanced users can download the source code and build from source:
 

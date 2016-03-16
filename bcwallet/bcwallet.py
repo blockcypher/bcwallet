@@ -1317,9 +1317,11 @@ def invoke_cli():
         puts(colored.red('Sorry, this app must be run with python 2.7 :('))
         puts(colored.red('Your version: %s' % sys.version))
         if sys.version_info[0] == 3:
-            puts(colored.red('Please uninstall bcwallet and reinstall like this:'))
+            puts(colored.red('Please uninstall bcwallet and reinstall like this:\n'))
             with indent(4):
-                puts(colored.magenta('$ pip2 install bcwallet'))
+                puts(colored.magenta('$ pip2 install bcwallet\n'))
+
+        sys.exit()
 
     # Check if blockcypher is up (basically if the user's machine is online)
     global USER_ONLINE
