@@ -980,7 +980,7 @@ def dump_selected_keys_or_addrs(wallet_obj, used=None, zero_balance=None):
 
             print_path_info(
                     address=address_obj['pub_address'],
-                    wif=address_obj['wif'],
+                    wif=address_obj.get('wif'),
                     path=address_obj['path'],
                     coin_symbol=coin_symbol_from_mkey(mpub),
                     )
@@ -1314,7 +1314,7 @@ def cli():
 
 def invoke_cli():
     if sys.version_info[0] != 2 or sys.version_info[1] != 7:
-        puts(colored.red('Sorry, this app must be run with python 2.7 :('))
+        puts(colored.red('Sorry, this app must be run with python 2.7'))
         puts(colored.red('Your version: %s' % sys.version))
         if sys.version_info[0] == 3:
             puts(colored.red('Please uninstall bcwallet and reinstall like this:\n'))
@@ -1369,10 +1369,7 @@ def invoke_cli():
         print_keys_not_saved()
         sys.exit()
     except Exception as e:
-        puts(colored.red('\nBad Robot!'))
-        puts(colored.red('Quitting on Unexpected Error:\n%s' % e))
-        with indent(2):
-            puts(colored.yellow(str(e)))
+        puts(colored.red('\nBad Robot! Quitting on Unexpected Error:\n%s' % e))
 
         puts('\nHere are the details to share with the developer for a bug report: \n')
         with indent(2):
@@ -1382,7 +1379,7 @@ def invoke_cli():
 
 if __name__ == '__main__':
     '''
-    For (rare) invocation like this:
+    For invocation like this (not tested):
     python bcwallet.py
     '''
     invoke_cli()
